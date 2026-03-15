@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="BusinessLogic/BusinessLogic.csproj" Id="1c102295-1bef-4548-9e2f-e9a8217faa8d" />
+  <Project Path="DataAccess/DataAccess.csproj" Id="76f0c0da-487e-45ca-a76d-e95a51565449" />
+  <Project Path="DataTransferObject/DataTransferObject.csproj" Id="53cc36da-4b79-41ab-93ed-2491286aac00" />
+  <Project Path="Presentation/Presentation.csproj" />
+</Solution>
