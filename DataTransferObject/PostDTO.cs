@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using DataTransferObject;
 
 namespace DataTransferObject
 {
@@ -33,8 +34,15 @@ namespace DataTransferObject
         public DateTime CreatedAt { get; set; }
         public int LikeCount { get; set; }
         public int CommentCount { get; set; }
-        public UserSimpleDTO User { get; set; }
+        public UserSimpleDto User { get; set; }
     }
+    public class UserSimpleDto
+    {
+        public string UserID { get; set; }
+        public string Username { get; set; }
+        public string AvatarURL { get; set; }
+    }
+    
     public class GetPostResponseDTO
     {
         public List<PostFeedDTO> Posts { get; set; }
@@ -61,4 +69,5 @@ namespace DataTransferObject
     {
         public string Url { get; set; }
     }
+
 }

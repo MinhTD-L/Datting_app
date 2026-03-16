@@ -9,11 +9,28 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="FormChat\**" />
+    <Compile Remove="FormFriend\**" />
+    <Compile Remove="FormMatch\**" />
+    <Compile Remove="FormProfile\**" />
+    <EmbeddedResource Remove="FormChat\**" />
+    <EmbeddedResource Remove="FormFriend\**" />
+    <EmbeddedResource Remove="FormMatch\**" />
+    <EmbeddedResource Remove="FormProfile\**" />
+    <None Remove="FormChat\**" />
+    <None Remove="FormFriend\**" />
+    <None Remove="FormMatch\**" />
+    <None Remove="FormProfile\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="img\" />
-    <Folder Include="FormFriend\" />
-    <Folder Include="FormMatch\" />
-    <Folder Include="FormChat\" />
-    <Folder Include="FormProfile\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BusinessLogic\BusinessLogic.csproj" />
+    <ProjectReference Include="..\DataAccess\DataAccess.csproj" />
+    <ProjectReference Include="..\DataTransferObject\DataTransferObject.csproj" />
   </ItemGroup>
 
   <ItemGroup>

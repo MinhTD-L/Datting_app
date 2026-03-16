@@ -71,6 +71,7 @@
             btnLogin.TabIndex = 5;
             btnLogin.Text = "ĐĂNG NHẬP";
             btnLogin.UseVisualStyleBackColor = false;
+            btnLogin.Click += btnLogin_Click;
             // 
             // loginCard
             // 
@@ -95,7 +96,7 @@
             lblTitle.ForeColor = Color.FromArgb(160, 85, 80);
             lblTitle.Location = new Point(120, 30);
             lblTitle.Name = "lblTitle";
-            lblTitle.Size = new Size(146, 30);
+            lblTitle.Size = new Size(181, 37);
             lblTitle.TabIndex = 0;
             lblTitle.Text = "ĐĂNG NHẬP";
             // 
@@ -105,7 +106,7 @@
             lblEmail.Font = new Font("Segoe UI", 9F);
             lblEmail.Location = new Point(40, 100);
             lblEmail.Name = "lblEmail";
-            lblEmail.Size = new Size(126, 15);
+            lblEmail.Size = new Size(158, 20);
             lblEmail.TabIndex = 1;
             lblEmail.Text = "Tên đăng nhập / Email";
             // 
@@ -115,7 +116,7 @@
             lblPassword.Font = new Font("Segoe UI", 9F);
             lblPassword.Location = new Point(40, 170);
             lblPassword.Name = "lblPassword";
-            lblPassword.Size = new Size(57, 15);
+            lblPassword.Size = new Size(70, 20);
             lblPassword.TabIndex = 3;
             lblPassword.Text = "Mật khẩu";
             // 
@@ -125,7 +126,7 @@
             linkForgot.LinkColor = Color.FromArgb(150, 90, 85);
             linkForgot.Location = new Point(130, 305);
             linkForgot.Name = "linkForgot";
-            linkForgot.Size = new Size(94, 15);
+            linkForgot.Size = new Size(116, 20);
             linkForgot.TabIndex = 6;
             linkForgot.TabStop = true;
             linkForgot.Text = "Quên mật khẩu?";
@@ -136,10 +137,11 @@
             linkRegister.LinkColor = Color.FromArgb(150, 90, 85);
             linkRegister.Location = new Point(90, 330);
             linkRegister.Name = "linkRegister";
-            linkRegister.Size = new Size(183, 15);
+            linkRegister.Size = new Size(229, 20);
             linkRegister.TabIndex = 7;
             linkRegister.TabStop = true;
             linkRegister.Text = "Chưa có tài khoản? Đăng ký ngay";
+            linkRegister.LinkClicked += linkRegister_LinkClicked;
             // 
             // pictureBox1
             // 

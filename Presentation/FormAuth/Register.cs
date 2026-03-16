@@ -12,16 +12,13 @@ namespace Presentation
             LoadManualLayout();
             btnRegister.Enabled = false;
         }
-        // Hàm này sẽ được gọi trong constructor để thiết lập lại layout khi form được khởi tạo hoặc khi kích thước thay đổi
         private void LoadManualLayout()
         {
-            // Xóa các control cũ để tránh bị đè hoặc nhân bản khi resize
             pnlCard.Controls.Clear();
 
             pnlCard.Controls.Add(lblTitle);
             pnlCard.Controls.Add(lblSubTitle);
 
-            // Sắp xếp các ô nhập liệu (Sử dụng hàm CreateField để Add vào pnlCard)
             // Hàng 1
             CreateField(pnlCard, "Họ tên *", txtName, 40, 110, 200);
             CreateField(pnlCard, "Email *", txtEmail, 260, 110, 200);
@@ -156,7 +153,10 @@ namespace Presentation
         }
         private void lnkLogin_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
+            Login login = new Login();
+            login.Show();
             this.Close();
         }
+        
     }
 }

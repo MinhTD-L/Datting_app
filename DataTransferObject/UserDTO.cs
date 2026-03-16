@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Text.Json.Serialization;
 
 namespace DataTransferObject
 {
@@ -12,11 +13,12 @@ namespace DataTransferObject
         public string Email { get; set; }
         public string Password { get; set; }
     }
-    public class LoginresultDTO
+    public class LoginResultDTO
     {
-        public string Statust { get; set; }
+        public string Status { get; set; }
         public string Token { get; set; }
         public UserBasicDTO User { get; set; }
+        public string Error { get; set; }
     }
     public class RegisterInput
     {
@@ -26,8 +28,11 @@ namespace DataTransferObject
     }
     public class UserBasicDTO
     {
-        public string id { get; set; }
-        public string UserName { get; set; }
+        [JsonPropertyName("id")]
+        public string Id { get; set; }
+
+        [JsonPropertyName("username")]
+        public string Username { get; set; }
     }
     public class verifyEmailDTO
     {
