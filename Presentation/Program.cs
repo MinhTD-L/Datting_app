@@ -1,4 +1,5 @@
 using DataTransferObject;
+using System.Net.Sockets;
 
 namespace Presentation
 {
@@ -8,11 +9,10 @@ namespace Presentation
         ///  The main entry point for the application.
         /// </summary>
         [STAThread]
-        static void Main()
+        static async Task Main()
         {
-            // To customize application configuration such as set high DPI settings or default font,
-            // see https://aka.ms/applicationconfiguration.
             ApplicationConfiguration.Initialize();
+
             if (SessionManager.IsLoggedIn())
             {
                 Application.Run(new MainDashboard());
@@ -22,5 +22,10 @@ namespace Presentation
                 Application.Run(new Login());
             }
         }
+        public static class SocketManager
+        {
+            public static ChatSocketDAL Socket { get; } = new ChatSocketDAL();
+        }
+
     }
 }

@@ -1,5 +1,6 @@
-using DataTransferObject;
 using DataAccess;
+using DataTransferObject;
+using static Presentation.Program;
 namespace Presentation
 {
     public partial class Login : Form
@@ -28,7 +29,8 @@ namespace Presentation
                 SessionManager.Token = result.Token;
                 SessionManager.UserId=result.User.Id;
                 SessionManager.Username=result.User.Username;
-                MainDashboard main=new MainDashboard();
+                await SocketManager.Socket.Connect(SessionManager.Token);
+                MainDashboard main =new MainDashboard();
                 main.Show();
                 this.Hide();
             }

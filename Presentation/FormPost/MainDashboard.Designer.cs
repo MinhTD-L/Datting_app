@@ -24,7 +24,7 @@
 
         private TextBox txtSearch;
 
-        private FlowLayoutPanel flowLayoutPanel1;
+        private FlowLayoutPanel PostFeed;
 
         protected override void Dispose(bool disposing)
         {
@@ -52,7 +52,7 @@
             pnlOnlineNow = new Panel();
             lblOnline = new Label();
             pnlContent = new Panel();
-            flowLayoutPanel1 = new FlowLayoutPanel();
+            PostFeed = new FlowLayoutPanel();
             pnlSidebar.SuspendLayout();
             pnlHeader.SuspendLayout();
             pnlRightSidebar.SuspendLayout();
@@ -83,7 +83,7 @@
             lblLogo.ForeColor = Color.FromArgb(230, 30, 100);
             lblLogo.Location = new Point(40, 20);
             lblLogo.Name = "lblLogo";
-            lblLogo.Size = new Size(155, 25);
+            lblLogo.Size = new Size(202, 32);
             lblLogo.TabIndex = 0;
             lblLogo.Text = "❤ LoveConnect";
             // 
@@ -151,7 +151,7 @@
             txtSearch.Location = new Point(30, 25);
             txtSearch.Name = "txtSearch";
             txtSearch.PlaceholderText = "🔍 Search people, interests, locations...";
-            txtSearch.Size = new Size(1430, 20);
+            txtSearch.Size = new Size(1430, 25);
             txtSearch.TabIndex = 0;
             // 
             // pnlRightSidebar
@@ -180,7 +180,7 @@
             lblSuggested.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             lblSuggested.Location = new Point(10, 10);
             lblSuggested.Name = "lblSuggested";
-            lblSuggested.Size = new Size(132, 19);
+            lblSuggested.Size = new Size(157, 23);
             lblSuggested.TabIndex = 0;
             lblSuggested.Text = "Suggested for You";
             // 
@@ -199,32 +199,32 @@
             lblOnline.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             lblOnline.Location = new Point(10, 10);
             lblOnline.Name = "lblOnline";
-            lblOnline.Size = new Size(87, 19);
+            lblOnline.Size = new Size(104, 23);
             lblOnline.TabIndex = 0;
             lblOnline.Text = "Online Now";
             // 
             // pnlContent
             // 
             pnlContent.BackColor = Color.FromArgb(245, 246, 250);
-            pnlContent.Controls.Add(flowLayoutPanel1);
+            pnlContent.Controls.Add(PostFeed);
             pnlContent.Dock = DockStyle.Fill;
             pnlContent.Location = new Point(250, 70);
             pnlContent.Name = "pnlContent";
             pnlContent.Size = new Size(750, 680);
             pnlContent.TabIndex = 0;
             // 
-            // flowLayoutPanel1
+            // PostFeed
             // 
-            flowLayoutPanel1.AutoScroll = true;
-            flowLayoutPanel1.BackColor = Color.Gainsboro;
-            flowLayoutPanel1.Dock = DockStyle.Fill;
-            flowLayoutPanel1.FlowDirection = FlowDirection.TopDown;
-            flowLayoutPanel1.Location = new Point(0, 0);
-            flowLayoutPanel1.Name = "flowLayoutPanel1";
-            flowLayoutPanel1.Padding = new Padding(20);
-            flowLayoutPanel1.Size = new Size(750, 680);
-            flowLayoutPanel1.TabIndex = 0;
-            flowLayoutPanel1.WrapContents = false;
+            PostFeed.AutoScroll = true;
+            PostFeed.BackColor = Color.Gainsboro;
+            PostFeed.Dock = DockStyle.Fill;
+            PostFeed.FlowDirection = FlowDirection.TopDown;
+            PostFeed.Location = new Point(0, 0);
+            PostFeed.Name = "PostFeed";
+            PostFeed.Padding = new Padding(20);
+            PostFeed.Size = new Size(750, 680);
+            PostFeed.TabIndex = 0;
+            PostFeed.WrapContents = false;
             // 
             // MainDashboard
             // 

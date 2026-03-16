@@ -46,5 +46,12 @@ namespace DataAccess
                 dto
                 );
         }
+        public async Task<UserProfileDTO> GetProfile()
+        {
+            return await _api.GetAsync<UserProfileDTO>(
+               "user/profile"
+                );
+        }
+
     }
 }
