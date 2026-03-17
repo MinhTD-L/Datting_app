@@ -1,7 +1,9 @@
 using BusinessLogic;
 using DataTransferObject;
 using Presentation.FormPost.Components;
+using Presentation.FormFriend;
 using Presentation.FormProfile;
+using Presentation.FormChat;
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -16,15 +18,23 @@ namespace Presentation
     {
         private readonly PostBLL _postBll;
         private readonly UserBLL _userBll;
+        private readonly FriendBLL _friendBll;
+        private readonly ChatBLL _chatBll;
+        private System.Collections.Generic.HashSet<string> _friendIds = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);
+        private System.Collections.Generic.HashSet<string> _sentFriendRequests = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);
 
         private const string BaseUrl = "https://litmatchclone-production.up.railway.app";
         private Panel _feedLoadingOverlay;
+        private Panel _messagesDot;
+        private bool _hasUnreadMessages;
         private const int FeedMaxWidth = 680;
 
         public MainDashboard()
         {
             _postBll = BusinessLogic.AppServices.PostBll;
             _userBll = BusinessLogic.AppServices.UserBll;
+            _friendBll = BusinessLogic.AppServices.FriendBll;
+            _chatBll = BusinessLogic.AppServices.ChatBll;
             InitializeComponent();
             InitUi();
         }
@@ -33,6 +43,8 @@ namespace Presentation
         {
             _postBll = postBll ?? throw new ArgumentNullException(nameof(postBll));
             _userBll = userBll ?? throw new ArgumentNullException(nameof(userBll));
+            _friendBll = BusinessLogic.AppServices.FriendBll;
+            _chatBll = BusinessLogic.AppServices.ChatBll;
             InitializeComponent();
             InitUi();
         }
@@ -56,6 +68,94 @@ namespace Presentation
                 if (dlg.ShowDialog(this) == DialogResult.OK)
                     await LoadPosts();
             };
+
+            btnFriend.Click += (_, __) =>
+            {
+                using var dlg = new FriendsForm(_friendBll);
+                dlg.ShowDialog(this);
+            };
+
+            BuildMessagesDot();
+            WireChatBadge();
+
+            btnMessages.Click += (_, __) =>
+            {
+                ClearMessagesDot();
+                using var dlg = new ConversationsForm(_chatBll);
+                dlg.ShowDialog(this);
+            };
+        }
+
+        private void BuildMessagesDot()
+        {
+            // small red dot on Messages button
+            _messagesDot = new Panel
+            {
+                Size = new Size(10, 10),
+                BackColor = Color.FromArgb(255, 30, 100),
+                Visible = false
+            };
+
+            void ApplyRound(Control c)
+            {
+                var rect = new Rectangle(0, 0, c.Width, c.Height);
+                using var path = new GraphicsPath();
+                path.AddEllipse(rect);
+                c.Region = new Region(path);
+            }
+
+            _messagesDot.SizeChanged += (_, __) => ApplyRound(_messagesDot);
+            ApplyRound(_messagesDot);
+
+            btnMessages.Controls.Add(_messagesDot);
+            _messagesDot.BringToFront();
+
+            void Reposition()
+            {
+                _messagesDot.Left = btnMessages.Width - _messagesDot.Width - 14;
+                _messagesDot.Top = 10;
+            }
+            btnMessages.SizeChanged += (_, __) => Reposition();
+            Reposition();
+        }
+
+        private void WireChatBadge()
+        {
+            _chatBll.MessageReceived -= OnChatMessageForBadge;
+            _chatBll.MessageReceived += OnChatMessageForBadge;
+            FormClosed += (_, __) => _chatBll.MessageReceived -= OnChatMessageForBadge;
+        }
+
+        private void OnChatMessageForBadge(ChatMessageDto m)
+        {
+            try
+            {
+                if (m == null) return;
+                if (string.Equals(m.From, SessionManager.UserId, StringComparison.Ordinal))
+                    return; // don't badge on my own echo
+
+                if (InvokeRequired)
+                {
+                    BeginInvoke(new Action(() => SetMessagesDot(true)));
+                    return;
+                }
+                SetMessagesDot(true);
+            }
+            catch
+            {
+            }
+        }
+
+        private void SetMessagesDot(bool show)
+        {
+            _hasUnreadMessages = show;
+            if (_messagesDot != null && !_messagesDot.IsDisposed)
+                _messagesDot.Visible = show;
+        }
+
+        private void ClearMessagesDot()
+        {
+            SetMessagesDot(false);
         }
 
         private void BuildFeedLoadingOverlay()
@@ -108,7 +208,30 @@ namespace Presentation
 
         private async void Dashboard_Load(object sender, EventArgs e)
         {
+            await LoadFriendIdsAsync();
             await LoadPosts();
+        }
+
+        private async Task LoadFriendIdsAsync()
+        {
+            try
+            {
+                var res = await _friendBll.GetFriendsAsync();
+                var set = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);
+                if (res?.Friends != null)
+                {
+                    foreach (var f in res.Friends)
+                    {
+                        if (!string.IsNullOrWhiteSpace(f?.UserId))
+                            set.Add(f.UserId);
+                    }
+                }
+                _friendIds = set;
+            }
+            catch
+            {
+                _friendIds = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);
+            }
         }
 
         private async Task LoadPosts()
@@ -188,6 +311,20 @@ namespace Presentation
                 AutoSize = true,
                 Location = new Point(picAvatar.Right + 10, 12)
             };
+
+            var btnAddFriend = new Button
+            {
+                Text = "Kết bạn",
+                AutoSize = true,
+                Height = 26,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.FromArgb(255, 30, 100),
+                ForeColor = Color.White,
+                Cursor = Cursors.Hand,
+                Visible = false,
+                Tag = "no_open_detail"
+            };
+            btnAddFriend.FlatAppearance.BorderSize = 0;
 
             var lblTime = new Label
             {
@@ -273,12 +410,33 @@ namespace Presentation
 
             card.Controls.Add(picAvatar);
             card.Controls.Add(lblUsername);
+            card.Controls.Add(btnAddFriend);
             card.Controls.Add(lblTime);
             card.Controls.Add(lblContent);
             card.Controls.Add(mediaHost);
             card.Controls.Add(lblStats);
             card.Controls.Add(divider);
             card.Controls.Add(actionBar);
+
+            void LayoutHeaderRow()
+            {
+                // position add-friend button next to username, clamp within card
+                btnAddFriend.Left = lblUsername.Right + 10;
+                btnAddFriend.Top = lblUsername.Top - 1;
+
+                var maxLeft = card.ClientSize.Width - card.Padding.Right - btnAddFriend.Width;
+                if (btnAddFriend.Left > maxLeft)
+                    btnAddFriend.Left = maxLeft;
+            }
+
+            card.SizeChanged += (_, __) =>
+            {
+                lblContent.Width = card.Width - 24;
+                divider.Width = card.Width - 24;
+                actionBar.Width = card.Width - 24;
+                mediaHost.Width = card.Width - 24;
+                LayoutHeaderRow();
+            };
 
             actionBar.Controls.Add(btnLike, 0, 0);
             actionBar.Controls.Add(btnComment, 1, 0);
@@ -354,6 +512,40 @@ namespace Presentation
             actionBar.BringToFront();
 
             _ = LoadCardAssetsAsync();
+
+            // Friend button visibility + action
+            var authorId = post?.User?.UserID;
+            var meId = SessionManager.UserId;
+            var canShowAddFriend =
+                !string.IsNullOrWhiteSpace(authorId) &&
+                !string.IsNullOrWhiteSpace(meId) &&
+                !string.Equals(authorId, meId, StringComparison.Ordinal) &&
+                !_friendIds.Contains(authorId) &&
+                !_sentFriendRequests.Contains(authorId);
+
+            btnAddFriend.Visible = canShowAddFriend;
+            LayoutHeaderRow();
+
+            btnAddFriend.Click += async (_, __) =>
+            {
+                if (string.IsNullOrWhiteSpace(authorId))
+                    return;
+
+                btnAddFriend.Enabled = false;
+                btnAddFriend.Text = "Đang gửi...";
+                try
+                {
+                    await _friendBll.SendRequestAsync(authorId);
+                    _sentFriendRequests.Add(authorId);
+                    btnAddFriend.Text = "Đã gửi";
+                }
+                catch (Exception ex)
+                {
+                    btnAddFriend.Enabled = true;
+                    btnAddFriend.Text = "Kết bạn";
+                    MessageBox.Show("Không thể gửi lời mời: " + ex.Message);
+                }
+            };
 
             async Task LoadCardAssetsAsync()
             {

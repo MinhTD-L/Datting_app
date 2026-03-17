@@ -1,4 +1,4 @@
-﻿namespace Presentation
+namespace Presentation
 {
     partial class MainDashboard
     {
@@ -17,6 +17,7 @@
         private Button btnHome;
         private Button btnMatch;
         private Button btnFriend;
+        private Button btnMessages;
         private Button btnProfile;
         private Button btnCreatePost;
 
@@ -40,6 +41,7 @@
             btnHome = new Button();
             btnMatch = new Button();
             btnFriend = new Button();
+            btnMessages = new Button();
             btnProfile = new Button();
             btnCreatePost = new Button();
             pnlHeader = new Panel();
@@ -63,6 +65,7 @@
             pnlSidebar.Controls.Add(btnHome);
             pnlSidebar.Controls.Add(btnMatch);
             pnlSidebar.Controls.Add(btnFriend);
+            pnlSidebar.Controls.Add(btnMessages);
             pnlSidebar.Controls.Add(btnProfile);
             pnlSidebar.Controls.Add(btnCreatePost);
             pnlSidebar.Dock = DockStyle.Left;
@@ -107,12 +110,20 @@
             btnFriend.TabIndex = 3;
             btnFriend.Text = "Bạn bè";
             // 
+            // btnMessages
+            // 
+            btnMessages.Location = new Point(25, 280);
+            btnMessages.Name = "btnMessages";
+            btnMessages.Size = new Size(200, 45);
+            btnMessages.TabIndex = 4;
+            btnMessages.Text = "Tin nhắn";
+            // 
             // btnProfile
             // 
-            btnProfile.Location = new Point(25, 280);
+            btnProfile.Location = new Point(25, 340);
             btnProfile.Name = "btnProfile";
             btnProfile.Size = new Size(200, 45);
-            btnProfile.TabIndex = 4;
+            btnProfile.TabIndex = 5;
             btnProfile.Text = "Trang cá nhân";
             btnProfile.Click += btnProfile_Click;
             // 
@@ -125,7 +136,7 @@
             btnCreatePost.Location = new Point(25, 500);
             btnCreatePost.Name = "btnCreatePost";
             btnCreatePost.Size = new Size(200, 45);
-            btnCreatePost.TabIndex = 5;
+            btnCreatePost.TabIndex = 6;
             btnCreatePost.Text = "➕ Create Post";
             btnCreatePost.UseVisualStyleBackColor = false;
             // 

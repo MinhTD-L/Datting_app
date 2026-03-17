@@ -82,5 +82,19 @@ namespace BusinessLogic
 
             return res.Url;
         }
+
+        public async Task<string> UploadMediaAsync(string filePath, string type)
+        {
+            var res = await _userDal.UploadMedia(new UploadMediaRequestDto
+            {
+                FilePath = filePath,
+                Type = string.IsNullOrWhiteSpace(type) ? "file" : type
+            });
+
+            if (res == null || string.IsNullOrWhiteSpace(res.Url))
+                throw new Exception("Upload media thất bại.");
+
+            return res.Url;
+        }
     }
 }

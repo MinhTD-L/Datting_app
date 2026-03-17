@@ -9,14 +9,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="FormChat\**" />
-    <Compile Remove="FormFriend\**" />
     <Compile Remove="FormMatch\**" />
-    <EmbeddedResource Remove="FormChat\**" />
-    <EmbeddedResource Remove="FormFriend\**" />
     <EmbeddedResource Remove="FormMatch\**" />
-    <None Remove="FormChat\**" />
-    <None Remove="FormFriend\**" />
     <None Remove="FormMatch\**" />
   </ItemGroup>
 

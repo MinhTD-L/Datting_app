@@ -1,16 +1,17 @@
 using BusinessLogic;
 using DataTransferObject;
-using static Presentation.Program;
 namespace Presentation
 {
     public partial class Login : Form
     {
         private readonly UserBLL _userBll;
+        private readonly ChatBLL _chatBll;
 
         public Login()
         {
             InitializeComponent();
             _userBll = BusinessLogic.AppServices.UserBll;
+            _chatBll = BusinessLogic.AppServices.ChatBll;
         }
 
         private async void btnLogin_Click(object sender, EventArgs e)
@@ -31,7 +32,14 @@ namespace Presentation
                 SessionManager.Token = result.Token;
                 SessionManager.UserId = result.User.Id;
                 SessionManager.Username = result.User.Username;
-                await SocketManager.Socket.Connect(SessionManager.Token);
+                try
+                {
+                    await _chatBll.EnsureConnectedAsync(SessionManager.Token);
+                }
+                catch
+                {
+                    // ignore: chat can reconnect later when opening messages
+                }
                 MainDashboard main = new MainDashboard();
                 main.Show();
                 this.Hide();

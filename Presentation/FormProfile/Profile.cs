@@ -146,13 +146,16 @@ namespace Presentation.FormProfile
 
         private Panel BuildPostCard(PostFeedDTO post)
         {
+            var maxWidth = Math.Min(680, Math.Max(360, flpMyPosts.ClientSize.Width - 40));
+            var left = Math.Max(6, (flpMyPosts.ClientSize.Width - maxWidth) / 2);
+
             var card = new Panel
             {
-                Width = flpMyPosts.ClientSize.Width - 25,
+                Width = maxWidth,
                 BackColor = Color.White,
-                Padding = new Padding(10),
-                Margin = new Padding(6),
-                Height = 120
+                Padding = new Padding(12),
+                Margin = new Padding(left, 8, 6, 8),
+                Height = 200
             };
 
             card.Paint += (_, e) =>
@@ -164,15 +167,20 @@ namespace Presentation.FormProfile
                 e.Graphics.DrawRectangle(pen, rect);
             };
 
-            var lblContent = new Label
+            var picAvatar = new PictureBox
             {
-                Text = (post?.Content ?? "").Trim(),
-                AutoSize = false,
-                Width = card.Width - card.Padding.Horizontal,
-                Height = 44,
-                Font = new Font("Segoe UI", 9),
-                ForeColor = Color.FromArgb(30, 30, 30),
-                Location = new Point(10, 10)
+                Size = new Size(44, 44),
+                Location = new Point(12, 12),
+                SizeMode = PictureBoxSizeMode.Zoom,
+                BackColor = Color.FromArgb(238, 238, 238)
+            };
+
+            var lblUsername = new Label
+            {
+                Text = post?.User?.Username ?? SessionManager.Username ?? "Bạn",
+                AutoSize = true,
+                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                Location = new Point(picAvatar.Right + 10, 12)
             };
 
             var lblTime = new Label
@@ -181,56 +189,149 @@ namespace Presentation.FormProfile
                 AutoSize = true,
                 Font = new Font("Segoe UI", 8),
                 ForeColor = Color.Gray,
-                Location = new Point(10, lblContent.Bottom + 8)
+                Location = new Point(picAvatar.Right + 10, 34)
             };
 
-            var thumb = new PictureBox
+            var btnMenu = new Button
             {
-                Width = 64,
-                Height = 64,
-                SizeMode = PictureBoxSizeMode.Zoom,
-                BackColor = Color.FromArgb(245, 246, 250),
-                Location = new Point(card.Width - 10 - 64, 10),
-                Visible = false
-            };
-
-            var btnDelete = new Button
-            {
-                Text = "Xoá",
-                Width = 50,
-                Height = 24,
+                Text = "⋯",
+                Width = 34,
+                Height = 28,
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(245, 246, 250),
-                ForeColor = Color.FromArgb(140, 30, 30),
-                Location = new Point(card.Width - 10 - 50, lblTime.Top - 2),
+                BackColor = Color.Transparent,
+                ForeColor = Color.FromArgb(70, 70, 70),
+                Location = new Point(card.Width - 12 - 34, 12),
                 Cursor = Cursors.Hand,
                 Tag = "no_open_detail"
             };
-            btnDelete.FlatAppearance.BorderColor = Color.FromArgb(230, 230, 230);
-            btnDelete.Click += async (_, __) => await DeleteMyPostAsync(post?.Id);
+            btnMenu.FlatAppearance.BorderSize = 0;
+            btnMenu.FlatAppearance.MouseOverBackColor = Color.FromArgb(240, 240, 240);
+            btnMenu.FlatAppearance.MouseDownBackColor = Color.FromArgb(232, 232, 232);
 
-            card.Controls.Add(lblContent);
+            var menu = new ContextMenuStrip();
+            var miEdit = new ToolStripMenuItem("Chỉnh sửa");
+            var miDelete = new ToolStripMenuItem("Xoá");
+            menu.Items.Add(miEdit);
+            menu.Items.Add(miDelete);
+
+            miEdit.Click += (_, __) =>
+            {
+                MessageBox.Show(this, "Chưa có API cập nhật bài viết (edit). Khi BE có endpoint update, mình sẽ nối luôn.", "Thông báo",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+            };
+
+            miDelete.Click += async (_, __) => await DeleteMyPostAsync(post?.Id);
+
+            btnMenu.Click += (_, __) => menu.Show(btnMenu, new Point(0, btnMenu.Height));
+
+            var lblContent = new Label
+            {
+                Text = post?.Content ?? "",
+                Font = new Font("Segoe UI", 10),
+                AutoSize = false,
+                Location = new Point(12, picAvatar.Bottom + 10),
+                Width = card.Width - 24,
+                Height = 1,
+                ForeColor = Color.FromArgb(30, 30, 30)
+            };
+
+            var mediaHost = new Panel
+            {
+                Location = new Point(12, lblContent.Bottom + 10),
+                Width = card.Width - 24,
+                Height = 0,
+                BackColor = Color.FromArgb(240, 242, 245),
+                Visible = false
+            };
+
+            var lblStats = new Label
+            {
+                Text = $"❤️ {post?.LikeCount ?? 0}    💬 {post?.CommentCount ?? 0}",
+                Font = new Font("Segoe UI", 9),
+                ForeColor = Color.DimGray,
+                AutoSize = true,
+                Location = new Point(12, 0)
+            };
+
+            var divider = new Panel
+            {
+                Height = 1,
+                Width = card.Width - 24,
+                BackColor = Color.FromArgb(235, 235, 235),
+                Location = new Point(12, 0)
+            };
+
+            var actionBar = new TableLayoutPanel
+            {
+                Width = card.Width - 24,
+                Height = 36,
+                Location = new Point(12, 0),
+                BackColor = Color.Transparent,
+                ColumnCount = 2,
+                RowCount = 1,
+                Margin = Padding.Empty,
+                Padding = Padding.Empty,
+                Tag = "no_open_detail"
+            };
+            actionBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            actionBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            actionBar.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+
+            var btnLike = new Button
+            {
+                Text = "👍 Thích",
+                AutoSize = false,
+                Height = 34,
+                Dock = DockStyle.Fill,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.Transparent,
+                ForeColor = Color.FromArgb(70, 70, 70),
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnLike.FlatAppearance.BorderSize = 0;
+            btnLike.FlatAppearance.MouseOverBackColor = Color.FromArgb(240, 240, 240);
+            btnLike.FlatAppearance.MouseDownBackColor = Color.FromArgb(232, 232, 232);
+
+            var btnComment = new Button
+            {
+                Text = "💬 Bình luận",
+                AutoSize = false,
+                Height = 34,
+                Dock = DockStyle.Fill,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.Transparent,
+                ForeColor = Color.FromArgb(70, 70, 70),
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                Cursor = Cursors.Hand
+            };
+            btnComment.FlatAppearance.BorderSize = 0;
+            btnComment.FlatAppearance.MouseOverBackColor = Color.FromArgb(240, 240, 240);
+            btnComment.FlatAppearance.MouseDownBackColor = Color.FromArgb(232, 232, 232);
+
+            actionBar.Controls.Add(btnLike, 0, 0);
+            actionBar.Controls.Add(btnComment, 1, 0);
+
+            card.Controls.Add(picAvatar);
+            card.Controls.Add(lblUsername);
             card.Controls.Add(lblTime);
-            card.Controls.Add(thumb);
-            card.Controls.Add(btnDelete);
+            card.Controls.Add(btnMenu);
+            card.Controls.Add(lblContent);
+            card.Controls.Add(mediaHost);
+            card.Controls.Add(lblStats);
+            card.Controls.Add(divider);
+            card.Controls.Add(actionBar);
 
             card.SizeChanged += (_, __) =>
             {
-                lblContent.Width = card.Width - card.Padding.Horizontal - (thumb.Visible ? (thumb.Width + 10) : 0);
-                thumb.Left = card.Width - card.Padding.Right - thumb.Width;
-                btnDelete.Left = card.Width - card.Padding.Right - btnDelete.Width;
-                btnDelete.Top = lblTime.Top - 2;
+                lblContent.Width = card.Width - 24;
+                divider.Width = card.Width - 24;
+                actionBar.Width = card.Width - 24;
+                mediaHost.Width = card.Width - 24;
+                btnMenu.Left = card.Width - 12 - btnMenu.Width;
             };
 
-            var firstImage = post?.Media?.Find(x =>
-                !string.IsNullOrWhiteSpace(x?.Url) &&
-                string.Equals(x.Type, "image", System.StringComparison.OrdinalIgnoreCase));
-            if (firstImage != null)
-            {
-                thumb.Visible = true;
-                _ = LoadThumbAsync(thumb, firstImage.Url);
-                lblContent.Width = card.Width - card.Padding.Horizontal - thumb.Width - 10;
-            }
+            ApplyRounded(picAvatar);
 
             card.Cursor = Cursors.Hand;
             WireClickToChildren(card, () =>
@@ -241,6 +342,59 @@ namespace Presentation.FormProfile
                 using var detail = new Presentation.PostDetailForm(_postBll, post.Id);
                 detail.ShowDialog(this);
             });
+
+            btnComment.Click += (_, __) =>
+            {
+                if (string.IsNullOrWhiteSpace(post?.Id)) return;
+                using var detail = new Presentation.PostDetailForm(_postBll, post.Id, openComments: true);
+                detail.ShowDialog(this);
+            };
+
+            // assets (avatar + media)
+            _ = LoadAssetsAsync();
+
+            async Task LoadAssetsAsync()
+            {
+                try
+                {
+                    if (post?.User != null && !string.IsNullOrWhiteSpace(post.User.AvatarURL))
+                    {
+                        var avatar = await LoadImageFromUrl(post.User.AvatarURL);
+                        if (avatar != null && !picAvatar.IsDisposed)
+                            picAvatar.Image = avatar;
+                    }
+
+                    if (post?.Media != null && post.Media.Count > 0)
+                    {
+                        var images = post.Media.FindAll(x =>
+                            !string.IsNullOrWhiteSpace(x?.Url) &&
+                            string.Equals(x.Type, "image", System.StringComparison.OrdinalIgnoreCase));
+
+                        if (images.Count > 0 && !mediaHost.IsDisposed)
+                        {
+                            mediaHost.Visible = true;
+                            mediaHost.Controls.Clear();
+                            mediaHost.Height = Math.Min(360, (mediaHost.Width * 9) / 16);
+                            var pb = new PictureBox
+                            {
+                                Dock = DockStyle.Fill,
+                                SizeMode = PictureBoxSizeMode.Zoom,
+                                BackColor = Color.Black
+                            };
+                            mediaHost.Controls.Add(pb);
+                            pb.Image = await LoadImageFromUrl(images[0].Url);
+
+                            lblStats.Top = mediaHost.Bottom + 10;
+                            divider.Top = lblStats.Bottom + 8;
+                            actionBar.Top = divider.Bottom + 6;
+                            card.Height = actionBar.Bottom + 10;
+                        }
+                    }
+                }
+                catch
+                {
+                }
+            }
 
             return card;
         }
@@ -350,7 +504,6 @@ namespace Presentation.FormProfile
 
             // Cards
             StyleCardPanel(pnlIntro);
-            StyleCardPanel(panel1);
             StyleCardPanel(panel2);
 
             lblBioHead.Font = new Font("Segoe UI", 10, FontStyle.Bold);
@@ -374,7 +527,6 @@ namespace Presentation.FormProfile
             flpMyPosts.BackColor = Color.Transparent;
             flpMyPosts.Padding = new Padding(2);
             lblMyPostHead.Font = new Font("Segoe UI", 10, FontStyle.Bold);
-            lblMyPicture.Font = new Font("Segoe UI", 10, FontStyle.Bold);
 
             // Reposition elements on resize
             void LayoutHeader()

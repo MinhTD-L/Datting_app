@@ -41,8 +41,6 @@ namespace Presentation.FormProfile
             panel2 = new Panel();
             flpMyPosts = new FlowLayoutPanel();
             lblMyPostHead = new Label();
-            panel1 = new Panel();
-            lblMyPicture = new Label();
             pnlHeader.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)pbAvatar).BeginInit();
             flpContent.SuspendLayout();
@@ -53,7 +51,6 @@ namespace Presentation.FormProfile
             pnlGender.SuspendLayout();
             tlpBottomGrid.SuspendLayout();
             panel2.SuspendLayout();
-            panel1.SuspendLayout();
             SuspendLayout();
             // 
             // pnlHeader
@@ -315,11 +312,9 @@ namespace Presentation.FormProfile
             // 
             // tlpBottomGrid
             // 
-            tlpBottomGrid.ColumnCount = 2;
-            tlpBottomGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            tlpBottomGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
-            tlpBottomGrid.Controls.Add(panel2, 1, 0);
-            tlpBottomGrid.Controls.Add(panel1, 0, 0);
+            tlpBottomGrid.ColumnCount = 1;
+            tlpBottomGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            tlpBottomGrid.Controls.Add(panel2, 0, 0);
             tlpBottomGrid.Location = new Point(23, 219);
             tlpBottomGrid.Name = "tlpBottomGrid";
             tlpBottomGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 20F));
@@ -331,9 +326,9 @@ namespace Presentation.FormProfile
             panel2.Controls.Add(flpMyPosts);
             panel2.Controls.Add(lblMyPostHead);
             panel2.Dock = DockStyle.Fill;
-            panel2.Location = new Point(473, 3);
+            panel2.Location = new Point(3, 3);
             panel2.Name = "panel2";
-            panel2.Size = new Size(464, 494);
+            panel2.Size = new Size(934, 494);
             panel2.TabIndex = 8;
             // 
             // flpMyPosts
@@ -343,7 +338,7 @@ namespace Presentation.FormProfile
             flpMyPosts.FlowDirection = FlowDirection.TopDown;
             flpMyPosts.Location = new Point(17, 50);
             flpMyPosts.Name = "flpMyPosts";
-            flpMyPosts.Size = new Size(430, 430);
+            flpMyPosts.Size = new Size(900, 430);
             flpMyPosts.TabIndex = 1;
             flpMyPosts.WrapContents = false;
             // 
@@ -356,23 +351,6 @@ namespace Presentation.FormProfile
             lblMyPostHead.TabIndex = 0;
             lblMyPostHead.Text = "Bài đăng của tôi";
             // 
-            // panel1
-            // 
-            panel1.Controls.Add(lblMyPicture);
-            panel1.Dock = DockStyle.Fill;
-            panel1.Location = new Point(3, 3);
-            panel1.Name = "panel1";
-            panel1.Size = new Size(464, 494);
-            panel1.TabIndex = 7;
-            // 
-            // lblMyPicture
-            // 
-            lblMyPicture.AutoSize = true;
-            lblMyPicture.Location = new Point(35, 12);
-            lblMyPicture.Name = "lblMyPicture";
-            lblMyPicture.Size = new Size(84, 20);
-            lblMyPicture.TabIndex = 0;
-            lblMyPicture.Text = "Ảnh của tôi";
             // 
             // Profile
             // 
@@ -396,8 +374,6 @@ namespace Presentation.FormProfile
             tlpBottomGrid.ResumeLayout(false);
             panel2.ResumeLayout(false);
             panel2.PerformLayout();
-            panel1.ResumeLayout(false);
-            panel1.PerformLayout();
             ResumeLayout(false);
         }
 
@@ -430,7 +406,5 @@ namespace Presentation.FormProfile
         private Panel panel2;
         private Label lblMyPostHead;
         private FlowLayoutPanel flpMyPosts;
-        private Panel panel1;
-        private Label lblMyPicture;
     }
 }
