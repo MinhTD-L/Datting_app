@@ -14,7 +14,7 @@ namespace DataAccess
 {
     public class PostDAL
     {
-        private readonly ApiClient _api = new ApiClient();
+        private readonly ApiClient  _api = new ApiClient();
 
         public async Task<GetPostResponseDTO> GetPost()
         {

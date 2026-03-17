@@ -1,3 +1,6 @@
+using DataAccess;
+using DataTransferObject;
+using Presentation.FormPost.Components;
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -5,8 +8,6 @@ using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using DataTransferObject;
-using DataAccess;
 
 namespace Presentation
 {
@@ -131,7 +132,7 @@ namespace Presentation
                 SetFeedLoading(false);
             }
         }
-      
+
         private async Task<Panel> CreatePostCard(PostFeedDTO post)
         {
             var card = new Panel
@@ -358,7 +359,7 @@ namespace Presentation
                 }
                 catch
                 {
-                    
+
                 }
             }
 
@@ -640,6 +641,28 @@ namespace Presentation
             if (span.TotalHours < 24) return $"{(int)span.TotalHours} giờ trước";
 
             return localTime.ToString("dd/MM/yyyy HH:mm");
+        }
+        private void LoadSuggestions()
+        {
+            pnlSuggested.Controls.Clear();
+
+            // Ví dụ add một người
+            SuggestionItem item1 = new SuggestionItem();
+            SuggestionItem item2 = new SuggestionItem();
+            item1.SetData("Đỗ Khánh Liên Bucket", "Nữ", 25, "5km");
+            item1.SetData("Đỗ Khánh Cyka Blyat", "hoabinh", 6, "0km");
+            pnlSuggested.Controls.Add(item1);
+            pnlSuggested.Controls.Add(item2);
+        }
+
+        private void MainDashboard_Load(object sender, EventArgs e)
+        {
+            
+        }
+
+        private void MainDashboard_Load_1(object sender, EventArgs e)
+        {
+LoadSuggestions();
         }
     }
 }

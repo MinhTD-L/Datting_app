@@ -1,4 +1,6 @@
 using DataTransferObject;
+using Presentation.FormProfile;
+using System.Net.Sockets;
 
 namespace Presentation
 {
@@ -18,7 +20,7 @@ namespace Presentation
             }
             else
             {
-                Application.Run(new Login());
+                Application.Run(new Profile());
             }
         }
         public static class SocketManager

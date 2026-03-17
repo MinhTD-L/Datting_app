@@ -24,17 +24,17 @@ namespace Presentation
                 return;
             }
 
-            if(result.Status == "success")
+            if (result.Status == "success")
             {
                 SessionManager.Token = result.Token;
-                SessionManager.UserId=result.User.Id;
-                SessionManager.Username=result.User.Username;
+                SessionManager.UserId = result.User.Id;
+                SessionManager.Username = result.User.Username;
                 await SocketManager.Socket.Connect(SessionManager.Token);
-                MainDashboard main =new MainDashboard();
+                MainDashboard main = new MainDashboard();
                 main.Show();
                 this.Hide();
             }
-            else if(result.Status != "success")
+            else if (result.Status != "success")
             {
                 MessageBox.Show(result.Error);
             }

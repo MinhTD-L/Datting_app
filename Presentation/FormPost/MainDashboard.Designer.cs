@@ -9,12 +9,10 @@
         private Panel pnlRightSidebar;
         private Panel pnlContent;
 
-        private Panel pnlSuggested;
-        private Panel pnlOnlineNow;
+        private FlowLayoutPanel pnlSuggested;
 
         private Label lblLogo;
         private Label lblSuggested;
-        private Label lblOnline;
 
         private Button btnHome;
         private Button btnMatch;
@@ -47,17 +45,14 @@
             pnlHeader = new Panel();
             txtSearch = new TextBox();
             pnlRightSidebar = new Panel();
-            pnlSuggested = new Panel();
+            pnlSuggested = new FlowLayoutPanel();
             lblSuggested = new Label();
-            pnlOnlineNow = new Panel();
-            lblOnline = new Label();
             pnlContent = new Panel();
             PostFeed = new FlowLayoutPanel();
             pnlSidebar.SuspendLayout();
             pnlHeader.SuspendLayout();
             pnlRightSidebar.SuspendLayout();
             pnlSuggested.SuspendLayout();
-            pnlOnlineNow.SuspendLayout();
             pnlContent.SuspendLayout();
             SuspendLayout();
             // 
@@ -83,7 +78,7 @@
             lblLogo.ForeColor = Color.FromArgb(230, 30, 100);
             lblLogo.Location = new Point(40, 20);
             lblLogo.Name = "lblLogo";
-            lblLogo.Size = new Size(202, 32);
+            lblLogo.Size = new Size(155, 25);
             lblLogo.TabIndex = 0;
             lblLogo.Text = "❤ LoveConnect";
             // 
@@ -151,14 +146,13 @@
             txtSearch.Location = new Point(30, 25);
             txtSearch.Name = "txtSearch";
             txtSearch.PlaceholderText = "🔍 Search people, interests, locations...";
-            txtSearch.Size = new Size(1430, 25);
+            txtSearch.Size = new Size(1430, 20);
             txtSearch.TabIndex = 0;
             // 
             // pnlRightSidebar
             // 
             pnlRightSidebar.BackColor = Color.FromArgb(250, 248, 253);
             pnlRightSidebar.Controls.Add(pnlSuggested);
-            pnlRightSidebar.Controls.Add(pnlOnlineNow);
             pnlRightSidebar.Dock = DockStyle.Right;
             pnlRightSidebar.Location = new Point(1000, 70);
             pnlRightSidebar.Name = "pnlRightSidebar";
@@ -171,7 +165,7 @@
             pnlSuggested.Controls.Add(lblSuggested);
             pnlSuggested.Location = new Point(20, 20);
             pnlSuggested.Name = "pnlSuggested";
-            pnlSuggested.Size = new Size(240, 250);
+            pnlSuggested.Size = new Size(240, 648);
             pnlSuggested.TabIndex = 0;
             // 
             // lblSuggested
@@ -180,28 +174,9 @@
             lblSuggested.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             lblSuggested.Location = new Point(10, 10);
             lblSuggested.Name = "lblSuggested";
-            lblSuggested.Size = new Size(157, 23);
+            lblSuggested.Size = new Size(132, 19);
             lblSuggested.TabIndex = 0;
             lblSuggested.Text = "Suggested for You";
-            // 
-            // pnlOnlineNow
-            // 
-            pnlOnlineNow.BackColor = Color.White;
-            pnlOnlineNow.Controls.Add(lblOnline);
-            pnlOnlineNow.Location = new Point(20, 300);
-            pnlOnlineNow.Name = "pnlOnlineNow";
-            pnlOnlineNow.Size = new Size(240, 250);
-            pnlOnlineNow.TabIndex = 1;
-            // 
-            // lblOnline
-            // 
-            lblOnline.AutoSize = true;
-            lblOnline.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            lblOnline.Location = new Point(10, 10);
-            lblOnline.Name = "lblOnline";
-            lblOnline.Size = new Size(104, 23);
-            lblOnline.TabIndex = 0;
-            lblOnline.Text = "Online Now";
             // 
             // pnlContent
             // 
@@ -235,6 +210,7 @@
             Controls.Add(pnlSidebar);
             Name = "MainDashboard";
             Text = "LoveConnect Dashboard";
+            Load += MainDashboard_Load_1;
             pnlSidebar.ResumeLayout(false);
             pnlSidebar.PerformLayout();
             pnlHeader.ResumeLayout(false);
@@ -242,8 +218,6 @@
             pnlRightSidebar.ResumeLayout(false);
             pnlSuggested.ResumeLayout(false);
             pnlSuggested.PerformLayout();
-            pnlOnlineNow.ResumeLayout(false);
-            pnlOnlineNow.PerformLayout();
             pnlContent.ResumeLayout(false);
             ResumeLayout(false);
         }
