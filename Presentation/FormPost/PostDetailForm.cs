@@ -312,6 +312,59 @@ namespace Presentation
             btnLike.Dock = DockStyle.Fill;
             btnComment.Dock = DockStyle.Fill;
 
+            void UpdateLikeUi()
+            {
+                btnLike.Text = post.IsLiked ? "👍  Đã thích" : "👍  Thích";
+                btnLike.ForeColor = post.IsLiked ? Color.FromArgb(24, 119, 242) : Color.FromArgb(70, 70, 70);
+                lblStats.Text = $"❤️ {post.LikeCount}    💬 {post.CommentCount}";
+            }
+            UpdateLikeUi();
+
+            btnLike.Click += async (_, __) =>
+            {
+                if (string.IsNullOrWhiteSpace(post.Id))
+                    return;
+
+                btnLike.Enabled = false;
+
+                // optimistic update
+                var prevLiked = post.IsLiked;
+                var prevCount = post.LikeCount;
+                post.IsLiked = !post.IsLiked;
+                post.LikeCount = Math.Max(0, post.LikeCount + (post.IsLiked ? 1 : -1));
+                UpdateLikeUi();
+
+                try
+                {
+                    if (post.IsLiked)
+                    {
+                        await _postDal.LikePost(new LikePostDTO { PostID = post.Id });
+                    }
+                    else
+                    {
+                        await _postDal.UnlikePost(new DeleteLikeDTO { PostID = post.Id });
+                    }
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    post.IsLiked = prevLiked;
+                    post.LikeCount = prevCount;
+                    UpdateLikeUi();
+                    MessageBox.Show("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+                }
+                catch (Exception ex)
+                {
+                    post.IsLiked = prevLiked;
+                    post.LikeCount = prevCount;
+                    UpdateLikeUi();
+                    MessageBox.Show("Không thể thực hiện: " + ex.Message);
+                }
+                finally
+                {
+                    btnLike.Enabled = true;
+                }
+            };
+
             btnComment.Click += (_, __) =>
             {
                 // Focus comments after render

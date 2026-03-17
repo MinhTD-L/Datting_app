@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
@@ -26,6 +26,13 @@ namespace Presentation
 
             BuildFeedLoadingOverlay();
             this.Load += Dashboard_Load;
+
+            btnCreatePost.Click += async (_, __) =>
+            {
+                using var dlg = new CreatePostForm(_postDal);
+                if (dlg.ShowDialog(this) == DialogResult.OK)
+                    await LoadPosts();
+            };
         }
 
         private void BuildFeedLoadingOverlay()
@@ -179,7 +186,7 @@ namespace Presentation
                 Location = new Point(12, lblContent.Bottom + 10),
                 Width = card.Width - 24,
                 Height = 0,
-                BackColor = Color.Transparent,
+                BackColor = Color.FromArgb(240, 242, 245), // FB-like light gray behind media
                 Visible = false
             };
 
@@ -207,11 +214,27 @@ namespace Presentation
                 Location = new Point(12, 0),
                 BackColor = Color.Transparent
             };
+            // Mark action bar as non-clickable for opening details
+            actionBar.Tag = "no_open_detail";
 
             var btnLike = CreateActionButton("👍 Thích");
             var btnComment = CreateActionButton("💬 Bình luận");
             btnLike.Left = 0;
             btnComment.Left = btnLike.Right + 10;
+
+            var isLiked = post?.IsLiked ?? false;
+            if (!isLiked)
+                isLiked = post?.GetIsLikedFallback() ?? false;
+
+            // keep DTO in sync so other UI can reuse it
+            post.IsLiked = isLiked;
+            void UpdateLikeUi()
+            {
+                btnLike.Text = post.IsLiked ? "👍 Đã thích" : "👍 Thích";
+                btnLike.ForeColor = post.IsLiked ? Color.FromArgb(24, 119, 242) : Color.FromArgb(70, 70, 70);
+                lblStats.Text = $"❤️ {post.LikeCount}    💬 {post.CommentCount}";
+            }
+            UpdateLikeUi();
 
             card.Controls.Add(picAvatar);
             card.Controls.Add(lblUsername);
@@ -239,6 +262,52 @@ namespace Presentation
 
             WireClickToChildren(card, async () => await OpenPostDetailAsync(post.Id));
             btnComment.Click += async (_, __) => await OpenPostDetailAsync(post.Id, openComments: true);
+            btnLike.Click += async (_, __) =>
+            {
+                if (string.IsNullOrWhiteSpace(post.Id))
+                    return;
+
+                btnLike.Enabled = false;
+
+                // optimistic update
+                var prevLiked = post.IsLiked;
+                var prevCount = post.LikeCount;
+                post.IsLiked = !post.IsLiked;
+                post.LikeCount = Math.Max(0, post.LikeCount + (post.IsLiked ? 1 : -1));
+                UpdateLikeUi();
+
+                try
+                {
+                    if (post.IsLiked)
+                    {
+                        await _postDal.LikePost(new LikePostDTO { PostID = post.Id });
+                    }
+                    else
+                    {
+                        await _postDal.UnlikePost(new DeleteLikeDTO { PostID = post.Id });
+                    }
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    // revert
+                    post.IsLiked = prevLiked;
+                    post.LikeCount = prevCount;
+                    UpdateLikeUi();
+                    MessageBox.Show("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+                }
+                catch (Exception ex)
+                {
+                    // revert
+                    post.IsLiked = prevLiked;
+                    post.LikeCount = prevCount;
+                    UpdateLikeUi();
+                    MessageBox.Show("Không thể thực hiện: " + ex.Message);
+                }
+                finally
+                {
+                    btnLike.Enabled = true;
+                }
+            };
 
             var contentHeight = MeasureLabelHeight(lblContent.Text, lblContent.Font, lblContent.Width, maxLines: 6);
             lblContent.Height = Math.Max(22, contentHeight);
@@ -275,13 +344,7 @@ namespace Presentation
                         if (images.Count > 0 && !mediaHost.IsDisposed)
                         {
                             mediaHost.Visible = true;
-                            mediaHost.Height = (mediaHost.Width * 9) / 16;
                             mediaHost.Controls.Clear();
-                            mediaHost.Controls.Add(new Panel
-                            {
-                                Dock = DockStyle.Fill,
-                                BackColor = Color.FromArgb(245, 246, 250)
-                            });
 
                             await BuildMediaGridAsync(mediaHost, images);
 
@@ -338,8 +401,21 @@ namespace Presentation
                 catch { /* UI action: ignore */ }
             }
 
+            static bool IsBlocked(Control c)
+            {
+                for (Control cur = c; cur != null; cur = cur.Parent)
+                {
+                    if (cur.Tag is string s && string.Equals(s, "no_open_detail", StringComparison.Ordinal))
+                        return true;
+                }
+                return false;
+            }
+
             void Attach(Control c)
             {
+                if (IsBlocked(c))
+                    return;
+
                 c.Click += Handler;
                 foreach (Control child in c.Controls)
                     Attach(child);
@@ -383,7 +459,7 @@ namespace Presentation
             host.Visible = true;
 
             var count = images.Count;
-            var gap = 6;
+            var gap = 3; // thinner gaps like Facebook
             var maxShow = Math.Min(4, count);
 
             var grid = new TableLayoutPanel
@@ -391,7 +467,8 @@ namespace Presentation
                 Dock = DockStyle.Fill,
                 BackColor = Color.Transparent,
                 Margin = Padding.Empty,
-                Padding = Padding.Empty
+                Padding = new Padding(gap),
+                CellBorderStyle = TableLayoutPanelCellBorderStyle.None
             };
 
             if (count == 1)
@@ -400,7 +477,7 @@ namespace Presentation
                 grid.ColumnCount = 1;
                 grid.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
                 grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-                host.Height = (host.Width * 9) / 16; // keep a nice aspect ratio
+                host.Height = Math.Min(420, (host.Width * 9) / 16); // nice landscape for single
             }
             else if (count == 2)
             {
@@ -409,7 +486,7 @@ namespace Presentation
                 grid.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
                 grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
                 grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-                host.Height = (host.Width * 9) / 20;
+                host.Height = Math.Min(420, (host.Width * 3) / 4);
             }
             else if (count == 3)
             {
@@ -419,7 +496,7 @@ namespace Presentation
                 grid.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
                 grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60));
                 grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
-                host.Height = (host.Width * 9) / 16;
+                host.Height = Math.Min(420, host.Width); // more square-ish like FB
             }
             else
             {
@@ -429,7 +506,7 @@ namespace Presentation
                 grid.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
                 grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
                 grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
-                host.Height = (host.Width * 9) / 16;
+                host.Height = Math.Min(420, host.Width);
             }
 
             host.Controls.Add(grid);
@@ -440,9 +517,23 @@ namespace Presentation
                 {
                     Dock = DockStyle.Fill,
                     SizeMode = PictureBoxSizeMode.Zoom,
-                    BackColor = Color.FromArgb(245, 246, 250),
-                    Margin = new Padding(gap / 2),
+                    BackColor = Color.Black,
+                    Margin = Padding.Empty
                 };
+            }
+
+            Control WrapCell(Control inner)
+            {
+                var cell = new Panel
+                {
+                    Dock = DockStyle.Fill,
+                    BackColor = Color.Transparent,
+                    Margin = Padding.Empty,
+                    Padding = new Padding(gap / 2)
+                };
+                inner.Dock = DockStyle.Fill;
+                cell.Controls.Add(inner);
+                return cell;
             }
 
             async Task<Image> TryLoad(string url) => await LoadImageFromUrl(url);
@@ -450,8 +541,7 @@ namespace Presentation
             if (count == 1)
             {
                 var pb = CreateMediaBox();
-                pb.Margin = Padding.Empty;
-                grid.Controls.Add(pb, 0, 0);
+                grid.Controls.Add(WrapCell(pb), 0, 0);
                 pb.Image = await TryLoad(images[0].Url);
                 return;
             }
@@ -461,7 +551,7 @@ namespace Presentation
                 for (var i = 0; i < 2; i++)
                 {
                     var pb = CreateMediaBox();
-                    grid.Controls.Add(pb, i, 0);
+                    grid.Controls.Add(WrapCell(pb), i, 0);
                     pb.Image = await TryLoad(images[i].Url);
                 }
                 return;
@@ -470,14 +560,15 @@ namespace Presentation
             if (count == 3)
             {
                 var pb0 = CreateMediaBox();
-                grid.Controls.Add(pb0, 0, 0);
-                grid.SetRowSpan(pb0, 2);
+                var c0 = WrapCell(pb0);
+                grid.Controls.Add(c0, 0, 0);
+                grid.SetRowSpan(c0, 2);
 
                 var pb1 = CreateMediaBox();
-                grid.Controls.Add(pb1, 1, 0);
+                grid.Controls.Add(WrapCell(pb1), 1, 0);
 
                 var pb2 = CreateMediaBox();
-                grid.Controls.Add(pb2, 1, 1);
+                grid.Controls.Add(WrapCell(pb2), 1, 1);
 
                 pb0.Image = await TryLoad(images[0].Url);
                 pb1.Image = await TryLoad(images[1].Url);
@@ -490,7 +581,8 @@ namespace Presentation
             for (var i = 0; i < maxShow; i++)
             {
                 var pb = CreateMediaBox();
-                grid.Controls.Add(pb, cells[i].col, cells[i].row);
+                var cell = WrapCell(pb);
+                grid.Controls.Add(cell, cells[i].col, cells[i].row);
                 pb.Image = await TryLoad(images[i].Url);
 
                 if (i == 3 && count > 4)
@@ -499,7 +591,7 @@ namespace Presentation
                     {
                         Dock = DockStyle.Fill,
                         BackColor = Color.FromArgb(120, 0, 0, 0),
-                        Margin = pb.Margin
+                        Margin = Padding.Empty
                     };
                     var lbl = new Label
                     {
@@ -511,7 +603,7 @@ namespace Presentation
                         BackColor = Color.Transparent
                     };
                     overlay.Controls.Add(lbl);
-                    grid.Controls.Add(overlay, cells[i].col, cells[i].row);
+                    cell.Controls.Add(overlay);
                     overlay.BringToFront();
                 }
             }

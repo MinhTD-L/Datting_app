@@ -1,5 +1,4 @@
 using DataTransferObject;
-using System.Net.Sockets;
 
 namespace Presentation
 {
@@ -9,7 +8,7 @@ namespace Presentation
         ///  The main entry point for the application.
         /// </summary>
         [STAThread]
-        static async Task Main()
+        static void Main()
         {
             ApplicationConfiguration.Initialize();
 

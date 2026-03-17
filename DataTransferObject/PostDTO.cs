@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace DataTransferObject
@@ -49,10 +50,14 @@ namespace DataTransferObject
         public PostFeedDTO Post { get; set; }
     }
 
-    public class CristPostDTO
+    public class CreatePostDTO
     {
+        [JsonPropertyName("content")]
         public string Content { get; set; }
-        public List<PostMedia> Media { get; set; }
+
+        // Backend expects "PostMedia" (as per Postman payload)
+        [JsonPropertyName("PostMedia")]
+        public List<PostMedia> Media { get; set; } = new();
     }
 
     public class PostSimpleDTO
@@ -61,11 +66,20 @@ namespace DataTransferObject
         public string Content { get; set; }
     }
 
-    public class CristSponeDTO
+    public class CreateResponeDTO
     {
         public PostSimpleDTO Post { get; set; }
     }
-
+    public class DeletePostDTO
+    {
+        [JsonPropertyName("id")]
+        public string PostID {  get; set; }
+    }
+    public class DeleteLikeDTO
+    {
+        [JsonPropertyName("post_id")]
+        public string PostID { get; set; }
+    }
     public class PostFeedDTO
     {
         [JsonPropertyName("id")]
@@ -86,11 +100,46 @@ namespace DataTransferObject
         [JsonPropertyName("comment_count")]
         public int CommentCount { get; set; }
 
+        [JsonPropertyName("is_liked")]
+        public bool IsLiked { get; set; }
+
         [JsonPropertyName("comments")]
         public List<PostCommentDto> Comments { get; set; } = new();
 
         [JsonPropertyName("user")]
         public UserSimpleDto User { get; set; }
+
+        // Some APIs expose "is_liked"/"liked" flags; keep extra fields to detect.
+        [JsonExtensionData]
+        public Dictionary<string, JsonElement> Extra { get; set; } = new();
+
+        public bool GetIsLikedFallback()
+        {
+            // Prefer strongly-typed field when present
+            if (IsLiked) return true;
+            if (Extra == null || Extra.Count == 0) return false;
+
+            static bool TryGetBool(Dictionary<string, JsonElement> dict, string key, out bool value)
+            {
+                value = false;
+                if (!dict.TryGetValue(key, out var el)) return false;
+                try
+                {
+                    if (el.ValueKind == JsonValueKind.True) { value = true; return true; }
+                    if (el.ValueKind == JsonValueKind.False) { value = false; return true; }
+                    if (el.ValueKind == JsonValueKind.String && bool.TryParse(el.GetString(), out var b)) { value = b; return true; }
+                    if (el.ValueKind == JsonValueKind.Number && el.TryGetInt32(out var n)) { value = n != 0; return true; }
+                }
+                catch { }
+                return false;
+            }
+
+            if (TryGetBool(Extra, "is_liked", out var v)) return v;
+            if (TryGetBool(Extra, "isLiked", out v)) return v;
+            if (TryGetBool(Extra, "liked", out v)) return v;
+            if (TryGetBool(Extra, "has_liked", out v)) return v;
+            return false;
+        }
     }
 
     public class UserSimpleDto
@@ -144,11 +193,19 @@ namespace DataTransferObject
 
     public class LikePostDTO
     {
+        [JsonPropertyName("post_id")]
         public string PostID { get; set; }
     }
 
     public class UploadMediaResponeDTO
     {
+        [JsonPropertyName("url")]
         public string Url { get; set; }
     }
+    public class UploadMediaRequestDto
+    {
+        public string FilePath { get; set; }
+        public string Type { get; set; }
+    }
+
 }
