@@ -1,4 +1,4 @@
-﻿namespace Presentation.FormProfile
+namespace Presentation.FormProfile
 {
     partial class Profile
     {
@@ -13,6 +13,7 @@
         private void InitializeComponent()
         {
             pnlHeader = new Panel();
+            btnBack = new Button();
             btnEdit = new Button();
             lblAgeHead = new Label();
             lblEmailHead = new Label();
@@ -37,10 +38,11 @@
             lblGender = new Label();
             lblGenderHead = new Label();
             tlpBottomGrid = new TableLayoutPanel();
-            panel1 = new Panel();
             panel2 = new Panel();
-            lblMyPicture = new Label();
+            flpMyPosts = new FlowLayoutPanel();
             lblMyPostHead = new Label();
+            panel1 = new Panel();
+            lblMyPicture = new Label();
             pnlHeader.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)pbAvatar).BeginInit();
             flpContent.SuspendLayout();
@@ -50,13 +52,14 @@
             pnlCare.SuspendLayout();
             pnlGender.SuspendLayout();
             tlpBottomGrid.SuspendLayout();
-            panel1.SuspendLayout();
             panel2.SuspendLayout();
+            panel1.SuspendLayout();
             SuspendLayout();
             // 
             // pnlHeader
             // 
             pnlHeader.BackColor = Color.White;
+            pnlHeader.Controls.Add(btnBack);
             pnlHeader.Controls.Add(btnEdit);
             pnlHeader.Controls.Add(lblAgeHead);
             pnlHeader.Controls.Add(lblEmailHead);
@@ -72,6 +75,18 @@
             pnlHeader.Size = new Size(1000, 250);
             pnlHeader.TabIndex = 1;
             // 
+            // btnBack
+            // 
+            btnBack.BackColor = Color.White;
+            btnBack.FlatAppearance.BorderColor = Color.FromArgb(230, 230, 230);
+            btnBack.FlatStyle = FlatStyle.Flat;
+            btnBack.Location = new Point(30, 130);
+            btnBack.Name = "btnBack";
+            btnBack.Size = new Size(120, 34);
+            btnBack.TabIndex = 6;
+            btnBack.Text = "← Trở về";
+            btnBack.UseVisualStyleBackColor = false;
+            // 
             // btnEdit
             // 
             btnEdit.Location = new Point(810, 161);
@@ -80,6 +95,7 @@
             btnEdit.TabIndex = 5;
             btnEdit.Text = "Chỉnh sửa hồ sơ";
             btnEdit.UseVisualStyleBackColor = true;
+            // event wired in code-behind
             // 
             // lblAgeHead
             // 
@@ -128,7 +144,7 @@
             lblNameAge.Font = new Font("Segoe UI", 18F, FontStyle.Bold);
             lblNameAge.Location = new Point(30, 185);
             lblNameAge.Name = "lblNameAge";
-            lblNameAge.Size = new Size(128, 32);
+            lblNameAge.Size = new Size(158, 41);
             lblNameAge.TabIndex = 2;
             lblNameAge.Text = "Username";
             // 
@@ -222,7 +238,7 @@
             label3.AutoSize = true;
             label3.Location = new Point(52, 67);
             label3.Name = "label3";
-            label3.Size = new Size(88, 15);
+            label3.Size = new Size(112, 20);
             label3.TabIndex = 0;
             label3.Text = "#So lan ket noi ";
             label3.TextAlign = ContentAlignment.TopCenter;
@@ -232,7 +248,7 @@
             lblConnectHead.AutoSize = true;
             lblConnectHead.Location = new Point(86, 28);
             lblConnectHead.Name = "lblConnectHead";
-            lblConnectHead.Size = new Size(44, 15);
+            lblConnectHead.Size = new Size(56, 20);
             lblConnectHead.TabIndex = 0;
             lblConnectHead.Text = "Kết nối";
             lblConnectHead.TextAlign = ContentAlignment.TopCenter;
@@ -252,7 +268,7 @@
             label2.AutoSize = true;
             label2.Location = new Point(91, 52);
             label2.Name = "label2";
-            label2.Size = new Size(115, 15);
+            label2.Size = new Size(144, 20);
             label2.TabIndex = 0;
             label2.Text = "#gioi tinh quan tam ";
             label2.TextAlign = ContentAlignment.TopCenter;
@@ -262,7 +278,7 @@
             lblCareHead.AutoSize = true;
             lblCareHead.Location = new Point(91, 19);
             lblCareHead.Name = "lblCareHead";
-            lblCareHead.Size = new Size(83, 15);
+            lblCareHead.Size = new Size(103, 20);
             lblCareHead.TabIndex = 0;
             lblCareHead.Text = "Quan tâm đến";
             lblCareHead.TextAlign = ContentAlignment.TopCenter;
@@ -282,7 +298,7 @@
             lblGender.AutoSize = true;
             lblGender.Location = new Point(51, 52);
             lblGender.Name = "lblGender";
-            lblGender.Size = new Size(58, 15);
+            lblGender.Size = new Size(73, 20);
             lblGender.TabIndex = 0;
             lblGender.Text = "#gioi tinh";
             lblGender.TextAlign = ContentAlignment.TopCenter;
@@ -292,7 +308,7 @@
             lblGenderHead.AutoSize = true;
             lblGenderHead.Location = new Point(51, 19);
             lblGenderHead.Name = "lblGenderHead";
-            lblGenderHead.Size = new Size(52, 15);
+            lblGenderHead.Size = new Size(65, 20);
             lblGenderHead.TabIndex = 0;
             lblGenderHead.Text = "Giới tính";
             lblGenderHead.TextAlign = ContentAlignment.TopCenter;
@@ -310,6 +326,36 @@
             tlpBottomGrid.Size = new Size(940, 500);
             tlpBottomGrid.TabIndex = 3;
             // 
+            // panel2
+            // 
+            panel2.Controls.Add(flpMyPosts);
+            panel2.Controls.Add(lblMyPostHead);
+            panel2.Dock = DockStyle.Fill;
+            panel2.Location = new Point(473, 3);
+            panel2.Name = "panel2";
+            panel2.Size = new Size(464, 494);
+            panel2.TabIndex = 8;
+            // 
+            // flpMyPosts
+            // 
+            flpMyPosts.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            flpMyPosts.AutoScroll = true;
+            flpMyPosts.FlowDirection = FlowDirection.TopDown;
+            flpMyPosts.Location = new Point(17, 50);
+            flpMyPosts.Name = "flpMyPosts";
+            flpMyPosts.Size = new Size(430, 430);
+            flpMyPosts.TabIndex = 1;
+            flpMyPosts.WrapContents = false;
+            // 
+            // lblMyPostHead
+            // 
+            lblMyPostHead.AutoSize = true;
+            lblMyPostHead.Location = new Point(17, 23);
+            lblMyPostHead.Name = "lblMyPostHead";
+            lblMyPostHead.Size = new Size(117, 20);
+            lblMyPostHead.TabIndex = 0;
+            lblMyPostHead.Text = "Bài đăng của tôi";
+            // 
             // panel1
             // 
             panel1.Controls.Add(lblMyPicture);
@@ -319,32 +365,14 @@
             panel1.Size = new Size(464, 494);
             panel1.TabIndex = 7;
             // 
-            // panel2
-            // 
-            panel2.Controls.Add(lblMyPostHead);
-            panel2.Dock = DockStyle.Fill;
-            panel2.Location = new Point(473, 3);
-            panel2.Name = "panel2";
-            panel2.Size = new Size(464, 494);
-            panel2.TabIndex = 8;
-            // 
             // lblMyPicture
             // 
             lblMyPicture.AutoSize = true;
             lblMyPicture.Location = new Point(35, 12);
             lblMyPicture.Name = "lblMyPicture";
-            lblMyPicture.Size = new Size(68, 15);
+            lblMyPicture.Size = new Size(84, 20);
             lblMyPicture.TabIndex = 0;
             lblMyPicture.Text = "Ảnh của tôi";
-            // 
-            // lblMyPostHead
-            // 
-            lblMyPostHead.AutoSize = true;
-            lblMyPostHead.Location = new Point(17, 23);
-            lblMyPostHead.Name = "lblMyPostHead";
-            lblMyPostHead.Size = new Size(92, 15);
-            lblMyPostHead.TabIndex = 0;
-            lblMyPostHead.Text = "Bài đăng của tôi";
             // 
             // Profile
             // 
@@ -366,10 +394,10 @@
             pnlGender.ResumeLayout(false);
             pnlGender.PerformLayout();
             tlpBottomGrid.ResumeLayout(false);
-            panel1.ResumeLayout(false);
-            panel1.PerformLayout();
             panel2.ResumeLayout(false);
             panel2.PerformLayout();
+            panel1.ResumeLayout(false);
+            panel1.PerformLayout();
             ResumeLayout(false);
         }
 
@@ -392,6 +420,7 @@
         private Panel pnlCare;
         private Panel pnlGender;
         private Button btnEdit;
+        private Button btnBack;
         private Label lblCareHead;
         private Label lblGenderHead;
         private Label lblConnectHead;
@@ -400,6 +429,7 @@
         private Label lblGender;
         private Panel panel2;
         private Label lblMyPostHead;
+        private FlowLayoutPanel flpMyPosts;
         private Panel panel1;
         private Label lblMyPicture;
     }

@@ -20,7 +20,7 @@ namespace Presentation
             }
             else
             {
-                Application.Run(new Profile());
+                Application.Run(new Login());
             }
         }
         public static class SocketManager

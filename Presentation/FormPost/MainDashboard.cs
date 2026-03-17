@@ -1,6 +1,7 @@
-using DataAccess;
+using BusinessLogic;
 using DataTransferObject;
 using Presentation.FormPost.Components;
+using Presentation.FormProfile;
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -13,24 +14,45 @@ namespace Presentation
 {
     public partial class MainDashboard : Form
     {
-        private readonly PostDAL _postDal = new PostDAL();
+        private readonly PostBLL _postBll;
+        private readonly UserBLL _userBll;
+
         private const string BaseUrl = "https://litmatchclone-production.up.railway.app";
         private Panel _feedLoadingOverlay;
+        private const int FeedMaxWidth = 680;
 
         public MainDashboard()
         {
+            _postBll = BusinessLogic.AppServices.PostBll;
+            _userBll = BusinessLogic.AppServices.UserBll;
             InitializeComponent();
+            InitUi();
+        }
+
+        public MainDashboard(PostBLL postBll, UserBLL userBll)
+        {
+            _postBll = postBll ?? throw new ArgumentNullException(nameof(postBll));
+            _userBll = userBll ?? throw new ArgumentNullException(nameof(userBll));
+            InitializeComponent();
+            InitUi();
+        }
+
+        private void InitUi()
+        {
 
             PostFeed.AutoScroll = true;
             PostFeed.FlowDirection = FlowDirection.TopDown;
             PostFeed.WrapContents = false;
+            PostFeed.BackColor = Color.FromArgb(245, 246, 250);
+
+            PostFeed.SizeChanged += (_, __) => CenterFeedCards();
 
             BuildFeedLoadingOverlay();
             this.Load += Dashboard_Load;
 
             btnCreatePost.Click += async (_, __) =>
             {
-                using var dlg = new CreatePostForm(_postDal);
+                using var dlg = new CreatePostForm(_postBll, _userBll);
                 if (dlg.ShowDialog(this) == DialogResult.OK)
                     await LoadPosts();
             };
@@ -96,7 +118,7 @@ namespace Presentation
                 PostFeed.Controls.Clear();
                 SetFeedLoading(true);
 
-                var result = await _postDal.GetPost();
+                var result = await _postBll.GetFeedAsync();
 
                 if (result == null || result.Posts == null || result.Posts.Count == 0)
                 {
@@ -118,6 +140,8 @@ namespace Presentation
                     var card = await CreatePostCard(post);
                     PostFeed.Controls.Add(card);
                 }
+
+                CenterFeedCards();
             }
             catch (UnauthorizedAccessException)
             {
@@ -135,13 +159,16 @@ namespace Presentation
 
         private async Task<Panel> CreatePostCard(PostFeedDTO post)
         {
+            var maxWidth = Math.Min(FeedMaxWidth, Math.Max(360, PostFeed.ClientSize.Width - 40));
+            var left = Math.Max(10, (PostFeed.ClientSize.Width - maxWidth) / 2);
+
             var card = new Panel
             {
-                Width = PostFeed.ClientSize.Width - 30,
+                Width = maxWidth,
                 Height = 200,
                 BackColor = Color.White,
                 BorderStyle = BorderStyle.None,
-                Margin = new Padding(10),
+                Margin = new Padding(left, 10, 10, 10),
                 Padding = new Padding(12)
             };
             card.Cursor = Cursors.Hand;
@@ -187,7 +214,7 @@ namespace Presentation
                 Location = new Point(12, lblContent.Bottom + 10),
                 Width = card.Width - 24,
                 Height = 0,
-                BackColor = Color.FromArgb(240, 242, 245), // FB-like light gray behind media
+                BackColor = Color.FromArgb(240, 242, 245),
                 Visible = false
             };
 
@@ -208,33 +235,40 @@ namespace Presentation
                 Location = new Point(12, 0)
             };
 
-            var actionBar = new Panel
+            var actionBar = new TableLayoutPanel
             {
                 Width = card.Width - 24,
                 Height = 36,
                 Location = new Point(12, 0),
-                BackColor = Color.Transparent
+                BackColor = Color.Transparent,
+                ColumnCount = 2,
+                RowCount = 1,
+                Margin = Padding.Empty,
+                Padding = Padding.Empty
             };
-            // Mark action bar as non-clickable for opening details
             actionBar.Tag = "no_open_detail";
+            actionBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            actionBar.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+            actionBar.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
 
             var btnLike = CreateActionButton("👍 Thích");
             var btnComment = CreateActionButton("💬 Bình luận");
-            btnLike.Left = 0;
-            btnComment.Left = btnLike.Right + 10;
+            btnLike.Dock = DockStyle.Fill;
+            btnComment.Dock = DockStyle.Fill;
 
             var isLiked = post?.IsLiked ?? false;
             if (!isLiked)
                 isLiked = post?.GetIsLikedFallback() ?? false;
 
-            // keep DTO in sync so other UI can reuse it
             post.IsLiked = isLiked;
+
             void UpdateLikeUi()
             {
                 btnLike.Text = post.IsLiked ? "👍 Đã thích" : "👍 Thích";
                 btnLike.ForeColor = post.IsLiked ? Color.FromArgb(24, 119, 242) : Color.FromArgb(70, 70, 70);
                 lblStats.Text = $"❤️ {post.LikeCount}    💬 {post.CommentCount}";
             }
+
             UpdateLikeUi();
 
             card.Controls.Add(picAvatar);
@@ -246,8 +280,8 @@ namespace Presentation
             card.Controls.Add(divider);
             card.Controls.Add(actionBar);
 
-            actionBar.Controls.Add(btnLike);
-            actionBar.Controls.Add(btnComment);
+            actionBar.Controls.Add(btnLike, 0, 0);
+            actionBar.Controls.Add(btnComment, 1, 0);
 
             ApplyRoundedAvatar(picAvatar);
             card.Paint += (_, e) =>
@@ -270,7 +304,6 @@ namespace Presentation
 
                 btnLike.Enabled = false;
 
-                // optimistic update
                 var prevLiked = post.IsLiked;
                 var prevCount = post.LikeCount;
                 post.IsLiked = !post.IsLiked;
@@ -281,16 +314,15 @@ namespace Presentation
                 {
                     if (post.IsLiked)
                     {
-                        await _postDal.LikePost(new LikePostDTO { PostID = post.Id });
+                        await _postBll.LikeAsync(post.Id);
                     }
                     else
                     {
-                        await _postDal.UnlikePost(new DeleteLikeDTO { PostID = post.Id });
+                        await _postBll.UnlikeAsync(post.Id);
                     }
                 }
                 catch (UnauthorizedAccessException)
                 {
-                    // revert
                     post.IsLiked = prevLiked;
                     post.LikeCount = prevCount;
                     UpdateLikeUi();
@@ -298,7 +330,6 @@ namespace Presentation
                 }
                 catch (Exception ex)
                 {
-                    // revert
                     post.IsLiked = prevLiked;
                     post.LikeCount = prevCount;
                     UpdateLikeUi();
@@ -320,7 +351,6 @@ namespace Presentation
             actionBar.Top = divider.Bottom + 6;
             card.Height = actionBar.Bottom + 10;
 
-            // Ensure action bar stays visible
             actionBar.BringToFront();
 
             _ = LoadCardAssetsAsync();
@@ -359,7 +389,6 @@ namespace Presentation
                 }
                 catch
                 {
-
                 }
             }
 
@@ -371,7 +400,7 @@ namespace Presentation
             if (string.IsNullOrWhiteSpace(postId))
                 return;
 
-            using var detail = new PostDetailForm(_postDal, postId, openComments);
+            using var detail = new PostDetailForm(_postBll, postId, openComments);
             detail.ShowDialog(this);
         }
 
@@ -380,8 +409,8 @@ namespace Presentation
             var btn = new Button
             {
                 Text = text,
-                AutoSize = true,
-                Height = 30,
+                AutoSize = false,
+                Height = 34,
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.Transparent,
                 ForeColor = Color.FromArgb(70, 70, 70),
@@ -389,7 +418,24 @@ namespace Presentation
                 Cursor = Cursors.Hand
             };
             btn.FlatAppearance.BorderSize = 0;
+            btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(240, 240, 240);
+            btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(232, 232, 232);
             return btn;
+        }
+
+        private void CenterFeedCards()
+        {
+            if (PostFeed == null || PostFeed.IsDisposed) return;
+
+            var maxWidth = Math.Min(FeedMaxWidth, Math.Max(360, PostFeed.ClientSize.Width - 40));
+            var left = Math.Max(10, (PostFeed.ClientSize.Width - maxWidth) / 2);
+
+            foreach (Control c in PostFeed.Controls)
+            {
+                if (c is not Panel p) continue;
+                p.Width = maxWidth;
+                p.Margin = new Padding(left, p.Margin.Top, 10, p.Margin.Bottom);
+            }
         }
 
         private static void WireClickToChildren(Control root, Func<Task> onClickAsync)
@@ -399,7 +445,7 @@ namespace Presentation
             async void Handler(object sender, EventArgs e)
             {
                 try { await onClickAsync(); }
-                catch { /* UI action: ignore */ }
+                catch { }
             }
 
             static bool IsBlocked(Control c)
@@ -460,7 +506,7 @@ namespace Presentation
             host.Visible = true;
 
             var count = images.Count;
-            var gap = 3; // thinner gaps like Facebook
+            var gap = 3;
             var maxShow = Math.Min(4, count);
 
             var grid = new TableLayoutPanel
@@ -478,7 +524,7 @@ namespace Presentation
                 grid.ColumnCount = 1;
                 grid.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
                 grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-                host.Height = Math.Min(420, (host.Width * 9) / 16); // nice landscape for single
+                host.Height = Math.Min(420, (host.Width * 9) / 16);
             }
             else if (count == 2)
             {
@@ -497,7 +543,7 @@ namespace Presentation
                 grid.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
                 grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60));
                 grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40));
-                host.Height = Math.Min(420, host.Width); // more square-ish like FB
+                host.Height = Math.Min(420, host.Width);
             }
             else
             {
@@ -577,7 +623,6 @@ namespace Presentation
                 return;
             }
 
-            // 4+
             var cells = new (int col, int row)[] { (0, 0), (1, 0), (0, 1), (1, 1) };
             for (var i = 0; i < maxShow; i++)
             {
@@ -642,11 +687,11 @@ namespace Presentation
 
             return localTime.ToString("dd/MM/yyyy HH:mm");
         }
+
         private void LoadSuggestions()
         {
             pnlSuggested.Controls.Clear();
 
-            // Ví dụ add một người
             SuggestionItem item1 = new SuggestionItem();
             SuggestionItem item2 = new SuggestionItem();
             item1.SetData("Đỗ Khánh Liên Bucket", "Nữ", 25, "5km");
@@ -657,12 +702,23 @@ namespace Presentation
 
         private void MainDashboard_Load(object sender, EventArgs e)
         {
-            
         }
 
         private void MainDashboard_Load_1(object sender, EventArgs e)
         {
-LoadSuggestions();
+            LoadSuggestions();
+        }
+
+        private void btnProfile_Click(object sender, EventArgs e)
+        {
+            Profile profile = new Profile(this);
+            profile.Show();
+            this.Hide();
+        }
+
+        private void btnHome_Click(object sender, EventArgs e)
+        {
+            LoadPosts();
         }
     }
 }

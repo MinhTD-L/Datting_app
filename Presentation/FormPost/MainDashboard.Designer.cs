@@ -78,7 +78,7 @@
             lblLogo.ForeColor = Color.FromArgb(230, 30, 100);
             lblLogo.Location = new Point(40, 20);
             lblLogo.Name = "lblLogo";
-            lblLogo.Size = new Size(155, 25);
+            lblLogo.Size = new Size(202, 32);
             lblLogo.TabIndex = 0;
             lblLogo.Text = "❤ LoveConnect";
             // 
@@ -89,6 +89,7 @@
             btnHome.Size = new Size(200, 45);
             btnHome.TabIndex = 1;
             btnHome.Text = "Trang chủ";
+            btnHome.Click += btnHome_Click;
             // 
             // btnMatch
             // 
@@ -113,6 +114,7 @@
             btnProfile.Size = new Size(200, 45);
             btnProfile.TabIndex = 4;
             btnProfile.Text = "Trang cá nhân";
+            btnProfile.Click += btnProfile_Click;
             // 
             // btnCreatePost
             // 
@@ -146,7 +148,7 @@
             txtSearch.Location = new Point(30, 25);
             txtSearch.Name = "txtSearch";
             txtSearch.PlaceholderText = "🔍 Search people, interests, locations...";
-            txtSearch.Size = new Size(1430, 20);
+            txtSearch.Size = new Size(1430, 25);
             txtSearch.TabIndex = 0;
             // 
             // pnlRightSidebar
@@ -172,9 +174,9 @@
             // 
             lblSuggested.AutoSize = true;
             lblSuggested.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            lblSuggested.Location = new Point(10, 10);
+            lblSuggested.Location = new Point(3, 0);
             lblSuggested.Name = "lblSuggested";
-            lblSuggested.Size = new Size(132, 19);
+            lblSuggested.Size = new Size(157, 23);
             lblSuggested.TabIndex = 0;
             lblSuggested.Text = "Suggested for You";
             // 

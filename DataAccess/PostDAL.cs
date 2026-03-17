@@ -21,6 +21,14 @@ namespace DataAccess
 
             return await _api.GetAsync<GetPostResponseDTO>("interact/post");
         }
+
+        public async Task<GetPostResponseDTO> GetMyPosts(int limit = 20, int page = 1)
+        {
+            if (limit <= 0 || limit > 20) limit = 20;
+            if (page <= 0) page = 1;
+
+            return await _api.GetAsync<GetPostResponseDTO>($"interact/post/me?limit={limit}&page={page}");
+        }
         public async Task<CreateResponeDTO> CreatePost(CreatePostDTO dto)
         {
             return await _api.PostAsync<CreatePostDTO, CreateResponeDTO>(
@@ -235,6 +243,14 @@ namespace DataAccess
                 "interact/post/comment/delete",
                 dto
             );
+        }
+
+        public async Task<DeletePostResponseDTO> DeletePost(string postId)
+        {
+            if (string.IsNullOrWhiteSpace(postId))
+                throw new ArgumentException("postId is required.", nameof(postId));
+
+            return await _api.DeleteAsync<DeletePostResponseDTO>($"interact/post/{postId}");
         }
         public async Task<APIresponseDTO> LikePost(LikePostDTO dto)
         {

@@ -3,14 +3,14 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using DataAccess;
+using BusinessLogic;
 using DataTransferObject;
 
 namespace Presentation
 {
     public class PostDetailForm : Form
     {
-        private readonly PostDAL _postDal;
+        private readonly PostBLL _postBll;
         private readonly string _postId;
         private readonly bool _openComments;
 
@@ -27,9 +27,9 @@ namespace Presentation
 
         private const string BaseUrl = "https://litmatchclone-production.up.railway.app";
 
-        public PostDetailForm(PostDAL postDal, string postId, bool openComments = false)
+        public PostDetailForm(PostBLL postBll, string postId, bool openComments = false)
         {
-            _postDal = postDal ?? throw new ArgumentNullException(nameof(postDal));
+            _postBll = postBll ?? throw new ArgumentNullException(nameof(postBll));
             _postId = postId ?? throw new ArgumentNullException(nameof(postId));
             _openComments = openComments;
 
@@ -129,7 +129,7 @@ namespace Presentation
             {
                 SetLoading(true);
 
-                var post = await _postDal.GetPost(_postId);
+                var post = await _postBll.GetPostDetailAsync(_postId);
                 if (post == null)
                 {
                     SetLoading(false);
@@ -338,11 +338,11 @@ namespace Presentation
                 {
                     if (post.IsLiked)
                     {
-                        await _postDal.LikePost(new LikePostDTO { PostID = post.Id });
+                        await _postBll.LikeAsync(post.Id);
                     }
                     else
                     {
-                        await _postDal.UnlikePost(new DeleteLikeDTO { PostID = post.Id });
+                        await _postBll.UnlikeAsync(post.Id);
                     }
                 }
                 catch (UnauthorizedAccessException)
@@ -540,17 +540,10 @@ namespace Presentation
                 if (_btnSendComment != null)
                     _btnSendComment.Enabled = false;
 
-                var dto = new CommentPostDTO
-                {
-                    PostID = _postId,
-                    Content = content,
-                    ParentID = _replyParentId
-                };
-
                 if (!string.IsNullOrWhiteSpace(_replyParentId))
-                    await _postDal.ReplyComment(dto);
+                    await _postBll.ReplyCommentAsync(_postId, _replyParentId, content);
                 else
-                    await _postDal.Comment(dto);
+                    await _postBll.CommentAsync(_postId, content);
 
                 _replyParentId = null;
                 _replyToUsername = null;

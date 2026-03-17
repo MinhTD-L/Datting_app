@@ -5,16 +5,15 @@ using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Text.Json;
-using DataAccess;
+using BusinessLogic;
 using DataTransferObject;
 
 namespace Presentation
 {
     public sealed class CreatePostForm : Form
     {
-        private readonly PostDAL _postDal;
-        private readonly UserDAL _userDal;
+        private readonly PostBLL _postBll;
+        private readonly UserBLL _userBll;
 
         private readonly TextBox _txtContent;
         private readonly FlowLayoutPanel _mediaPreview;
@@ -33,13 +32,13 @@ namespace Presentation
         private sealed class LocalMedia
         {
             public string Path { get; init; }
-            public string Type { get; init; } 
+            public string Type { get; init; }
         }
 
-        public CreatePostForm(PostDAL postDal)
+        public CreatePostForm(PostBLL postBll, UserBLL userBll)
         {
-            _postDal = postDal ?? throw new ArgumentNullException(nameof(postDal));
-            _userDal = new UserDAL();
+            _postBll = postBll ?? throw new ArgumentNullException(nameof(postBll));
+            _userBll = userBll ?? throw new ArgumentNullException(nameof(userBll));
 
             Text = "Tạo bài viết";
             StartPosition = FormStartPosition.CenterParent;
@@ -51,7 +50,6 @@ namespace Presentation
             Width = 620;
             Height = 560;
 
-            // Header (Facebook-like)
             var header = new Panel
             {
                 Dock = DockStyle.Top,
@@ -299,7 +297,11 @@ namespace Presentation
             footer.Controls.Add(footerBtns);
             footer.Controls.Add(_lblStatus);
 
-            var spacer = new Panel { Dock = DockStyle.Fill, BackColor = Color.White };
+            var spacer = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.White
+            };
 
             body.Controls.Add(spacer);
             body.Controls.Add(previewWrap);
@@ -341,7 +343,11 @@ namespace Presentation
                 if (type == null)
                     continue;
 
-                _selected.Add(new LocalMedia { Path = p, Type = type });
+                _selected.Add(new LocalMedia
+                {
+                    Path = p,
+                    Type = type
+                });
             }
 
             RebuildPreview();
@@ -350,7 +356,7 @@ namespace Presentation
 
         private static string GuessType(string path)
         {
-            var ext = (System.IO.Path.GetExtension(path) ?? string.Empty).ToLowerInvariant();
+            var ext = Path.GetExtension(path)?.ToLowerInvariant() ?? string.Empty;
 
             if (ext is ".jpg" or ".jpeg" or ".png" or ".gif" or ".webp" or ".bmp")
                 return "image";
@@ -368,14 +374,17 @@ namespace Presentation
 
             if (_selected.Count == 0)
             {
-                _mediaPreview.Parent.Visible = false;
+                if (_mediaPreview.Parent != null)
+                    _mediaPreview.Parent.Visible = false;
+
                 _mediaPreview.ResumeLayout();
                 return;
             }
 
-            _mediaPreview.Parent.Visible = true;
+            if (_mediaPreview.Parent != null)
+                _mediaPreview.Parent.Visible = true;
 
-            foreach (var item in _selected)
+            foreach (var item in _selected.ToArray())
             {
                 var tile = new Panel
                 {
@@ -385,6 +394,7 @@ namespace Presentation
                     Margin = new Padding(6),
                     Padding = new Padding(6)
                 };
+
                 tile.Paint += (_, e) =>
                 {
                     var rect = tile.ClientRectangle;
@@ -426,7 +436,7 @@ namespace Presentation
                     }
                     catch
                     {
-                        // ignore preview failures
+                        // bỏ qua lỗi preview
                     }
                 }
 
@@ -462,59 +472,36 @@ namespace Presentation
 
         private async Task SubmitAsync()
         {
-            var raw = (_txtContent.Text ?? string.Empty);
-            var content = string.Equals(raw, _contentPlaceholder, StringComparison.Ordinal) ? string.Empty : raw.Trim();
+            var raw = _txtContent.Text ?? string.Empty;
+            var content = string.Equals(raw, _contentPlaceholder, StringComparison.Ordinal)
+                ? string.Empty
+                : raw.Trim();
 
             if (string.IsNullOrWhiteSpace(content) && _selected.Count == 0)
             {
-                MessageBox.Show(this, "Vui lòng nhập nội dung hoặc chọn ít nhất 1 media.", "Thiếu thông tin",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(
+                    this,
+                    "Vui lòng nhập nội dung hoặc chọn ít nhất 1 media.",
+                    "Thiếu thông tin",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
                 return;
             }
 
-            SetBusy(true, "Đang upload media...");
+            SetBusy(true, "Đang tạo bài viết...");
 
             try
             {
-                var uploaded = new List<PostMedia>();
-
-                // 1) Upload media first
-                for (int i = 0; i < _selected.Count; i++)
+                var mediaPaths = new List<string>();
+                foreach (var item in _selected)
                 {
-                    var m = _selected[i];
-                    _lblStatus.Text = $"Đang upload {i + 1}/{_selected.Count}...";
-
-                    var up = await _postDal.UploadMedia(new UploadMediaRequestDto
-                    {
-                        FilePath = m.Path,
-                        Type = "post"
-                    });
-
-                    if (up == null || string.IsNullOrWhiteSpace(up.Url))
-                        throw new Exception("Upload media thất bại (không nhận được URL).");
-
-                    var postMediaType = GetPostMediaType(m.Path);
-
-                    uploaded.Add(new PostMedia
-                    {
-                        Url = up.Url,
-                        Type = postMediaType
-                    });
+                    mediaPaths.Add(item.Path);
                 }
-                // 2) Create post after media uploaded
-                _lblStatus.Text = "Đang tạo bài viết...";
 
-                var payload = new CreatePostDTO
-                {
-                    Content = content,
-                    Media = uploaded
-                };
+                var result = await _postBll.CreatePostAsync(content, mediaPaths);
 
-                var res = await _postDal.CreatePost(payload);
-
-                if (res?.Post == null || string.IsNullOrWhiteSpace(res.Post.Id)) { 
-                       throw new Exception("Tạo bài viết thất bại.");
-                }
+                if (result?.Post == null || string.IsNullOrWhiteSpace(result.Post.Id))
+                    throw new Exception("Tạo bài viết thất bại.");
 
                 _lblStatus.Text = "Đăng bài thành công.";
                 DialogResult = DialogResult.OK;
@@ -522,13 +509,21 @@ namespace Presentation
             }
             catch (UnauthorizedAccessException)
             {
-                MessageBox.Show(this, "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.", "Hết phiên",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show(
+                    this,
+                    "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.",
+                    "Hết phiên",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, "Không thể đăng bài: " + ex.Message, "Lỗi",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(
+                    this,
+                    "Không thể đăng bài: " + ex.Message,
+                    "Lỗi",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
             finally
             {
@@ -553,31 +548,46 @@ namespace Presentation
             if (_btnPost == null) return;
             if (!_btnPost.Enabled && UseWaitCursor) return;
 
-            var raw = (_txtContent?.Text ?? string.Empty);
-            var hasText = !string.IsNullOrWhiteSpace(raw) && !string.Equals(raw, _contentPlaceholder, StringComparison.Ordinal);
+            var raw = _txtContent?.Text ?? string.Empty;
+            var hasText = !string.IsNullOrWhiteSpace(raw) &&
+                          !string.Equals(raw, _contentPlaceholder, StringComparison.Ordinal);
+
             var canPost = hasText || _selected.Count > 0;
 
             _btnPost.Enabled = canPost && !UseWaitCursor;
             _btnClearMedia.Enabled = _selected.Count > 0 && !UseWaitCursor;
 
-            _btnPost.BackColor = _btnPost.Enabled ? Color.FromArgb(24, 119, 242) : Color.FromArgb(200, 224, 250);
-            _btnPost.ForeColor = _btnPost.Enabled ? Color.White : Color.FromArgb(120, 120, 120);
+            _btnPost.BackColor = _btnPost.Enabled
+                ? Color.FromArgb(24, 119, 242)
+                : Color.FromArgb(200, 224, 250);
+
+            _btnPost.ForeColor = _btnPost.Enabled
+                ? Color.White
+                : Color.FromArgb(120, 120, 120);
         }
 
         private async Task LoadCurrentUserAsync()
         {
             try
             {
-                var profile = await _userDal.GetProfile();
-                var displayName = (profile?.FullName ?? profile?.UserName ?? SessionManager.Username ?? "Bạn").Trim();
-                if (string.IsNullOrWhiteSpace(displayName)) displayName = "Bạn";
+                var profile = await _userBll.GetProfileAsync();
+
+                var displayName = (profile?.FullName
+                                   ?? profile?.UserName
+                                   ?? SessionManager.Username
+                                   ?? "Bạn").Trim();
+
+                if (string.IsNullOrWhiteSpace(displayName))
+                    displayName = "Bạn";
 
                 if (!_lblName.IsDisposed)
                     _lblName.Text = displayName;
 
                 _contentPlaceholder = $"{displayName} ơi, bạn đang nghĩ gì thế?";
+
                 if (!_txtContent.IsDisposed &&
-                    (string.IsNullOrWhiteSpace(_txtContent.Text) || string.Equals(_txtContent.Text, "Bạn đang nghĩ gì thế?", StringComparison.Ordinal)))
+                    (string.IsNullOrWhiteSpace(_txtContent.Text)
+                     || string.Equals(_txtContent.Text, "Bạn đang nghĩ gì thế?", StringComparison.Ordinal)))
                 {
                     _txtContent.Text = _contentPlaceholder;
                     _txtContent.ForeColor = Color.Gray;
@@ -592,8 +602,10 @@ namespace Presentation
             }
             catch
             {
-                // keep fallback UI
-                var displayName = string.IsNullOrWhiteSpace(SessionManager.Username) ? "Bạn" : SessionManager.Username;
+                var displayName = string.IsNullOrWhiteSpace(SessionManager.Username)
+                    ? "Bạn"
+                    : SessionManager.Username;
+
                 _contentPlaceholder = $"{displayName} ơi, bạn đang nghĩ gì thế?";
             }
         }
@@ -603,6 +615,7 @@ namespace Presentation
             try
             {
                 using var httpClient = new HttpClient();
+
                 var fullUrl = relativeOrFullUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase)
                     ? relativeOrFullUrl
                     : $"{BaseUrl}{relativeOrFullUrl}";
@@ -623,6 +636,7 @@ namespace Presentation
             {
                 var diameter = Math.Min(pictureBox.Width, pictureBox.Height);
                 var rect = new Rectangle(0, 0, diameter, diameter);
+
                 using var path = new System.Drawing.Drawing2D.GraphicsPath();
                 path.AddEllipse(rect);
                 pictureBox.Region = new Region(path);
@@ -631,17 +645,5 @@ namespace Presentation
             pictureBox.SizeChanged += (_, __) => UpdateRegion();
             UpdateRegion();
         }
-        private static string GetPostMediaType(string filePath)
-        {
-            var ext = Path.GetExtension(filePath)?.ToLowerInvariant();
-
-            return ext switch
-            {
-                ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".webp" => "image",
-                ".mp4" or ".mov" or ".avi" or ".mkv" or ".wmv" or ".webm" => "video",
-                _ => throw new NotSupportedException($"File không hỗ trợ để đăng bài: {ext}")
-            };
-        }
     }
 }
-

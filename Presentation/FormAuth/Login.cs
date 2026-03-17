@@ -1,13 +1,16 @@
-using DataAccess;
+using BusinessLogic;
 using DataTransferObject;
 using static Presentation.Program;
 namespace Presentation
 {
     public partial class Login : Form
     {
+        private readonly UserBLL _userBll;
+
         public Login()
         {
             InitializeComponent();
+            _userBll = BusinessLogic.AppServices.UserBll;
         }
 
         private async void btnLogin_Click(object sender, EventArgs e)
@@ -15,8 +18,7 @@ namespace Presentation
             LoginInputDTO dTO = new LoginInputDTO();
             dTO.Email = txtEmail.Text;
             dTO.Password = txtPassword.Text;
-            var dal = new UserDAL();
-            var result = await dal.Login(dTO);
+            var result = await _userBll.LoginAsync(dTO);
 
             if (result == null)
             {

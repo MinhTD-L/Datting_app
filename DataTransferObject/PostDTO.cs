@@ -55,7 +55,6 @@ namespace DataTransferObject
         [JsonPropertyName("content")]
         public string Content { get; set; }
 
-        // Backend expects "PostMedia" (as per Postman payload)
         [JsonPropertyName("PostMedia")]
         public List<PostMedia> Media { get; set; } = new();
     }

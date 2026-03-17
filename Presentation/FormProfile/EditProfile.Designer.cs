@@ -1,4 +1,4 @@
-﻿namespace Presentation.FormProfile
+namespace Presentation.FormProfile
 {
     partial class EditProfile
     {
@@ -30,8 +30,9 @@
         {
             this.components = new System.ComponentModel.Container();
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(800, 450);
-            this.Text = "EditProfile";
+            this.ClientSize = new System.Drawing.Size(720, 560);
+            this.Name = "EditProfile";
+            this.Text = "Chỉnh sửa hồ sơ";
         }
 
         #endregion
