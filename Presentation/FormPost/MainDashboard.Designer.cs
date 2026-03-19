@@ -21,8 +21,6 @@ namespace Presentation
         private Button btnProfile;
         private Button btnCreatePost;
 
-        private TextBox txtSearch;
-
         private FlowLayoutPanel PostFeed;
 
         protected override void Dispose(bool disposing)
@@ -45,12 +43,12 @@ namespace Presentation
             btnProfile = new Button();
             btnCreatePost = new Button();
             pnlHeader = new Panel();
-            txtSearch = new TextBox();
             pnlRightSidebar = new Panel();
             pnlSuggested = new FlowLayoutPanel();
             lblSuggested = new Label();
             pnlContent = new Panel();
             PostFeed = new FlowLayoutPanel();
+            txtSearch = new TextBox();
             pnlSidebar.SuspendLayout();
             pnlHeader.SuspendLayout();
             pnlRightSidebar.SuspendLayout();
@@ -81,7 +79,7 @@ namespace Presentation
             lblLogo.ForeColor = Color.FromArgb(230, 30, 100);
             lblLogo.Location = new Point(40, 20);
             lblLogo.Name = "lblLogo";
-            lblLogo.Size = new Size(202, 32);
+            lblLogo.Size = new Size(155, 25);
             lblLogo.TabIndex = 0;
             lblLogo.Text = "❤ LoveConnect";
             // 
@@ -150,18 +148,6 @@ namespace Presentation
             pnlHeader.Size = new Size(1030, 70);
             pnlHeader.TabIndex = 2;
             // 
-            // txtSearch
-            // 
-            txtSearch.Anchor = AnchorStyles.Left | AnchorStyles.Right;
-            txtSearch.BackColor = Color.FromArgb(243, 244, 248);
-            txtSearch.BorderStyle = BorderStyle.None;
-            txtSearch.Font = new Font("Segoe UI", 11F);
-            txtSearch.Location = new Point(30, 25);
-            txtSearch.Name = "txtSearch";
-            txtSearch.PlaceholderText = "🔍 Search people, interests, locations...";
-            txtSearch.Size = new Size(1430, 25);
-            txtSearch.TabIndex = 0;
-            // 
             // pnlRightSidebar
             // 
             pnlRightSidebar.BackColor = Color.FromArgb(250, 248, 253);
@@ -187,7 +173,7 @@ namespace Presentation
             lblSuggested.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             lblSuggested.Location = new Point(3, 0);
             lblSuggested.Name = "lblSuggested";
-            lblSuggested.Size = new Size(157, 23);
+            lblSuggested.Size = new Size(132, 19);
             lblSuggested.TabIndex = 0;
             lblSuggested.Text = "Suggested for You";
             // 
@@ -213,6 +199,18 @@ namespace Presentation
             PostFeed.Size = new Size(750, 680);
             PostFeed.TabIndex = 0;
             PostFeed.WrapContents = false;
+            // 
+            // txtSearch
+            // 
+            txtSearch.Anchor = AnchorStyles.Left | AnchorStyles.Right;
+            txtSearch.BackColor = Color.FromArgb(243, 244, 248);
+            txtSearch.BorderStyle = BorderStyle.None;
+            txtSearch.Font = new Font("Segoe UI", 11F);
+            txtSearch.Location = new Point(30, 25);
+            txtSearch.Name = "txtSearch";
+            txtSearch.PlaceholderText = "🔍 Search people, interests, locations...";
+            txtSearch.Size = new Size(1430, 20);
+            txtSearch.TabIndex = 0;
             // 
             // MainDashboard
             // 
@@ -242,5 +240,6 @@ namespace Presentation
             btn.FlatAppearance.BorderSize = 0;
             btn.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
         }
+        private TextBox txtSearch;
     }
 }

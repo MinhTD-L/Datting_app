@@ -18,6 +18,7 @@ namespace Presentation.FormChat
         private readonly string _withUserId;
         private readonly string _withName;
         private readonly string _withAvatar;
+        private readonly string _sessionId;
 
         private readonly FlowLayoutPanel _messages;
         private TextBox _input;
@@ -40,12 +41,13 @@ namespace Presentation.FormChat
 
         private const string BaseUrl = "https://litmatchclone-production.up.railway.app";
 
-        public ChatWindow(ChatBLL chatBll, string withUserId, string withName, string withAvatar)
+        public ChatWindow(ChatBLL chatBll, string withUserId, string withName, string withAvatar, string sessionId = null)
         {
             _chatBll = chatBll ?? throw new ArgumentNullException(nameof(chatBll));
             _withUserId = withUserId ?? throw new ArgumentNullException(nameof(withUserId));
             _withName = withName ?? "Chat";
             _withAvatar = withAvatar;
+            _sessionId = sessionId;
             _userBll = BusinessLogic.AppServices.UserBll;
 
             Text = _withName;
@@ -293,6 +295,7 @@ namespace Presentation.FormChat
             _chatBll.UserOnlineChanged += OnUserOnlineChanged;
             _chatBll.MessageDeleted += OnMessageDeleted;
             _chatBll.UserDetailsReceived += OnUserDetailsReceived;
+            _chatBll.LeftQueueReceived += OnMatchLeftReceived;
         }
 
         private void Unwire()
@@ -306,6 +309,31 @@ namespace Presentation.FormChat
             _chatBll.UserOnlineChanged -= OnUserOnlineChanged;
             _chatBll.MessageDeleted -= OnMessageDeleted;
             _chatBll.UserDetailsReceived -= OnUserDetailsReceived;
+            _chatBll.LeftQueueReceived -= OnMatchLeftReceived;
+        }
+
+        private void OnMatchLeftReceived(string withUserId, string sessionId)
+        {
+            if (IsDisposed) return;
+
+            // If backend provides identifiers, only close the chat related to this session/user.
+            if (!string.IsNullOrWhiteSpace(_sessionId) && !string.IsNullOrWhiteSpace(sessionId))
+            {
+                if (!string.Equals(_sessionId, sessionId, StringComparison.Ordinal))
+                    return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(withUserId))
+            {
+                if (!string.Equals(withUserId, _withUserId, StringComparison.Ordinal))
+                    return;
+            }
+
+            BeginInvoke(new Action(() =>
+            {
+                if (IsDisposed) return;
+                Close();
+            }));
         }
 
         private void OnConnected()

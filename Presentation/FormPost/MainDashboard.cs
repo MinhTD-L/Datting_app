@@ -86,6 +86,12 @@ namespace Presentation
                 dlg.ShowDialog(this);
             };
 
+            btnMatch.Click += (_, __) =>
+            {
+                using var dlg = new MatchForm(_chatBll);
+                dlg.ShowDialog(this);
+            };
+
             BuildMessagesDot();
             WireChatBadge();
 

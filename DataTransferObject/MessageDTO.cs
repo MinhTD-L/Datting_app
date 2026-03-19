@@ -180,9 +180,48 @@ namespace DataTransferObject
     }
     public class JoinMatchDto
     {
+        [JsonPropertyName("type")]
         public string Type { get; set; } = "join_match";
 
+        [JsonPropertyName("looking_for")]
         public string LookingFor { get; set; }
+    }
+
+    public class WaitingDto
+    {
+        [JsonPropertyName("type")]
+        public string Type { get; set; }
+    }
+
+    public class MatchedDto
+    {
+        [JsonPropertyName("type")]
+        public string Type { get; set; }
+
+        [JsonPropertyName("with")]
+        public string With { get; set; }
+
+        [JsonPropertyName("session_id")]
+        public string SessionId { get; set; }
+    }
+
+    public class LeftQueueDto
+    {
+        [JsonPropertyName("type")]
+        public string Type { get; set; }
+
+        // Optional (backend may include these keys)
+        [JsonPropertyName("with")]
+        public string With { get; set; }
+
+        [JsonPropertyName("session_id")]
+        public string SessionId { get; set; }
+    }
+
+    public class LeaveMatchDto
+    {
+        [JsonPropertyName("type")]
+        public string Type { get; set; } = "leave_match";
     }
     public class TypingDto
     {

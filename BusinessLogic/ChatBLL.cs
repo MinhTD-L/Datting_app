@@ -18,6 +18,12 @@ namespace BusinessLogic
         public event Action Disconnected;
         public event Action<string> Error;
 
+        // Matchmaking (realtime)
+        public event Action WaitingReceived;
+        public event Action<string, string> MatchedReceived; // withUserId, sessionId
+        // withUserId + sessionId are optional depending on backend payload.
+        public event Action<string, string> LeftQueueReceived; // withUserId, sessionId
+
         public event Action<IReadOnlyList<ContactDto>> ContactsUpdated;
         public event Action<string, IReadOnlyList<ChatMessageDto>, int> HistoryLoaded; 
         public event Action<ChatMessageDto> MessageReceived;
@@ -138,6 +144,21 @@ namespace BusinessLogic
             return _socket.SendMessage(new WSMessageDto { Type = "set_offline" });
         }
 
+        public Task JoinMatchAsync(string lookingFor)
+        {
+            if (string.IsNullOrWhiteSpace(lookingFor))
+                return Task.CompletedTask;
+
+            // Backend contract: { type: "join_match", looking_for: "male"/"female"/"other" }
+            return _socket.SendMessage(new JoinMatchDto { LookingFor = lookingFor });
+        }
+
+        public Task LeaveMatchAsync()
+        {
+            // Backend contract: { type: "leave_match" }
+            return _socket.SendMessage(new LeaveMatchDto());
+        }
+
         public Task RequestUserDetailsAsync(string toUserId)
         {
             if (string.IsNullOrWhiteSpace(toUserId))
@@ -191,6 +212,28 @@ namespace BusinessLogic
 
                 switch (type)
                 {
+                    case "waiting":
+                    {
+                        // Waiting payload has no extra fields.
+                        WaitingReceived?.Invoke();
+                        break;
+                    }
+                    case "matched":
+                    {
+                        var dto = JsonSerializer.Deserialize<MatchedDto>(json, _jsonOptions);
+                        if (dto != null)
+                            MatchedReceived?.Invoke(dto.With ?? "", dto.SessionId ?? "");
+                        break;
+                    }
+                    case "left_queue":
+                    {
+                        var dto = JsonSerializer.Deserialize<LeftQueueDto>(json, _jsonOptions);
+                        if (dto != null)
+                            LeftQueueReceived?.Invoke(dto.With ?? "", dto.SessionId ?? "");
+                        else
+                            LeftQueueReceived?.Invoke("", "");
+                        break;
+                    }
                     case "contacts":
                     {
                         var dto = JsonSerializer.Deserialize<ContactsDto>(json, _jsonOptions);
