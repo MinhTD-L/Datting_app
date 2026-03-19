@@ -21,6 +21,7 @@ namespace Presentation.FormChat
 
         private List<ContactDto> _contacts = new();
         private readonly Dictionary<string, Control> _rowByUserId = new(StringComparer.Ordinal);
+        private string _activeChatUserId = null;
 
         private const string BaseUrl = "https://litmatchclone-production.up.railway.app";
 
@@ -167,11 +168,32 @@ namespace Presentation.FormChat
                 var c = _contacts.FirstOrDefault(x => string.Equals(x.UserID, other, StringComparison.Ordinal));
                 if (c != null)
                 {
-                    c.LastMessage = msg.Content;
+                    if (string.Equals(msg.Type, "deleted", StringComparison.OrdinalIgnoreCase))
+                        c.LastMessage = "Tin nhắn đã thu hồi";
+                    else if (string.Equals(msg.Type, "image", StringComparison.OrdinalIgnoreCase))
+                        c.LastMessage = "[Hình ảnh]";
+                    else if (string.Equals(msg.Type, "file", StringComparison.OrdinalIgnoreCase))
+                        c.LastMessage = "[Tệp đính kèm]";
+                    else if (string.Equals(msg.Type, "call", StringComparison.OrdinalIgnoreCase))
+                        c.LastMessage = "[Cuộc gọi]";
+                    else
+                        c.LastMessage = msg.Content;
+
                     c.LastTime = msg.SentAt;
                     c.LastSenderID = msg.From;
                     if (!string.Equals(msg.From, SessionManager.UserId, StringComparison.Ordinal))
-                        c.UnreadCount += 1;
+                    {
+                        if (!string.Equals(other, _activeChatUserId, StringComparison.Ordinal) && 
+                            !string.Equals(msg.Type, "deleted", StringComparison.OrdinalIgnoreCase))
+                        {
+                            c.UnreadCount += 1;
+                        }
+                    }
+                }
+                else
+                {
+                    _ = _chatBll.LoadContactsAsync();
+                    return;
                 }
 
                 _contacts = _contacts
@@ -236,6 +258,8 @@ namespace Presentation.FormChat
             refs.Unread.Visible = c.UnreadCount > 0;
             refs.Unread.Text = c.UnreadCount > 99 ? "99+" : c.UnreadCount.ToString();
             refs.OnlineDot.Visible = string.Equals(c.Status, "online", StringComparison.OrdinalIgnoreCase);
+            
+            refs.Preview.Width = Math.Max(240, refs.Unread.Visible ? refs.Unread.Left - 16 - refs.Preview.Left : row.ClientSize.Width - row.Padding.Right - refs.Preview.Left);
         }
 
         private Control MakeRow(ContactDto c)
@@ -347,13 +371,18 @@ namespace Presentation.FormChat
                 {
                     c.UnreadCount = 0;
                     UpdateRow(c.UserID);
+                    _activeChatUserId = c.UserID;
+                    
+                    _ = _chatBll.MarkSeenAsync(c.UserID);
 
                     using var wnd = new ChatWindow(_chatBll, c.UserID, c.Username, c.Avatar);
                     wnd.ShowDialog(this);
+                    _activeChatUserId = null;
                     await _chatBll.LoadContactsAsync();
                 }
                 catch
                 {
+                    _activeChatUserId = null;
                 }
             }
 

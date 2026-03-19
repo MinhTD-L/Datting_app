@@ -166,10 +166,42 @@ namespace Presentation.FormChat
                 Location = new Point(_avatarBox.Right + 10, 40)
             };
 
+            var btnVideoCall = new Button
+            {
+                Text = "📹",
+                Width = 40,
+                Height = 34,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.White,
+                ForeColor = Color.FromArgb(30, 30, 30),
+                Location = new Point(header.ClientSize.Width - 100, 18),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Cursor = Cursors.Hand
+            };
+            btnVideoCall.FlatAppearance.BorderColor = Color.FromArgb(230, 230, 230);
+            btnVideoCall.Click += (_, __) => StartCall("video");
+
+            var btnVoiceCall = new Button
+            {
+                Text = "📞",
+                Width = 40,
+                Height = 34,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.White,
+                ForeColor = Color.FromArgb(30, 30, 30),
+                Location = new Point(header.ClientSize.Width - 50, 18),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Cursor = Cursors.Hand
+            };
+            btnVoiceCall.FlatAppearance.BorderColor = Color.FromArgb(230, 230, 230);
+            btnVoiceCall.Click += (_, __) => StartCall("voice");
+
             header.Controls.Add(btnBack);
             header.Controls.Add(_avatarBox);
             header.Controls.Add(lblName);
             header.Controls.Add(_lblStatus);
+            header.Controls.Add(btnVideoCall);
+            header.Controls.Add(btnVoiceCall);
             header.Controls.Add(new Panel { Dock = DockStyle.Bottom, Height = 1, BackColor = Color.FromArgb(235, 235, 235) });
 
             return header;
@@ -293,6 +325,7 @@ namespace Presentation.FormChat
             _chatBll.UserOnlineChanged += OnUserOnlineChanged;
             _chatBll.MessageDeleted += OnMessageDeleted;
             _chatBll.UserDetailsReceived += OnUserDetailsReceived;
+            _chatBll.CallOfferReceived += OnCallOfferReceived;
         }
 
         private void Unwire()
@@ -306,6 +339,25 @@ namespace Presentation.FormChat
             _chatBll.UserOnlineChanged -= OnUserOnlineChanged;
             _chatBll.MessageDeleted -= OnMessageDeleted;
             _chatBll.UserDetailsReceived -= OnUserDetailsReceived;
+            _chatBll.CallOfferReceived -= OnCallOfferReceived;
+        }
+
+        private void StartCall(string callType)
+        {
+            var frm = new CallForm(_chatBll, _withUserId, _withName, _withAvatar, false, callType);
+            frm.Show(this);
+        }
+
+        private void OnCallOfferReceived(string from, string msgId, string offer, string callType)
+        {
+            if (IsDisposed) return;
+            if (!string.Equals(from, _withUserId, StringComparison.Ordinal)) return;
+
+            BeginInvoke(new Action(() =>
+            {
+                var frm = new CallForm(_chatBll, _withUserId, _withName, _withAvatar, true, callType, msgId, offer);
+                frm.Show(this);
+            }));
         }
 
         private void OnConnected()
