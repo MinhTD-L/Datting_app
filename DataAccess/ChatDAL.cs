@@ -1,4 +1,4 @@
-﻿using System;
+﻿﻿using System;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -12,6 +12,8 @@ public class ChatSocketDAL
     private ClientWebSocket _socket;
     private CancellationTokenSource _cts;
     private readonly SemaphoreSlim _connectLock = new SemaphoreSlim(1, 1);
+    private readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
+    private readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions { DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull };
 
     private string _token;
     private bool _manualDisconnect = false;
@@ -65,15 +67,26 @@ public class ChatSocketDAL
         if (!IsConnected)
             throw new Exception("WebSocket not connected");
 
-        var json = JsonSerializer.Serialize(message);
+        var json = JsonSerializer.Serialize(message, _jsonOptions);
         var bytes = Encoding.UTF8.GetBytes(json);
 
-        await _socket.SendAsync(
-            new ArraySegment<byte>(bytes),
-            WebSocketMessageType.Text,
-            true,
-            _cts.Token
-        );
+        await _sendLock.WaitAsync();
+        try
+        {
+            if (IsConnected)
+            {
+                await _socket.SendAsync(
+                    new ArraySegment<byte>(bytes),
+                    WebSocketMessageType.Text,
+                    true,
+                    _cts.Token
+                );
+            }
+        }
+        finally
+        {
+            _sendLock.Release();
+        }
     }
 
     private async Task ReceiveLoop()
@@ -132,12 +145,23 @@ public class ChatSocketDAL
                 var pingJson = "{\"type\":\"ping\"}";
                 var pingBytes = Encoding.UTF8.GetBytes(pingJson);
 
-                await _socket.SendAsync(
-                    new ArraySegment<byte>(pingBytes),
-                    WebSocketMessageType.Text,
-                    true,
-                    _cts.Token
-                );
+                await _sendLock.WaitAsync();
+                try
+                {
+                    if (_socket != null && _socket.State == WebSocketState.Open)
+                    {
+                        await _socket.SendAsync(
+                            new ArraySegment<byte>(pingBytes),
+                            WebSocketMessageType.Text,
+                            true,
+                            _cts.Token
+                        );
+                    }
+                }
+                finally
+                {
+                    _sendLock.Release();
+                }
 
                 await Task.Delay(TimeSpan.FromSeconds(30), _cts.Token);
             }

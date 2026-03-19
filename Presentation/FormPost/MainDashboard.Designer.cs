@@ -223,7 +223,6 @@ namespace Presentation
             Controls.Add(pnlSidebar);
             Name = "MainDashboard";
             Text = "LoveConnect Dashboard";
-            Load += MainDashboard_Load_1;
             pnlSidebar.ResumeLayout(false);
             pnlSidebar.PerformLayout();
             pnlHeader.ResumeLayout(false);

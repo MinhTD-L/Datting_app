@@ -19,12 +19,12 @@ namespace BusinessLogic
         public event Action<string> Error;
 
         public event Action<IReadOnlyList<ContactDto>> ContactsUpdated;
-        public event Action<string, IReadOnlyList<ChatMessageDto>, int> HistoryLoaded; // withUserId, messages, page
+        public event Action<string, IReadOnlyList<ChatMessageDto>, int> HistoryLoaded; 
         public event Action<ChatMessageDto> MessageReceived;
-        public event Action<string> TypingReceived; // from
-        public event Action<string> SeenReceived; // from
-        public event Action<string, bool> UserOnlineChanged; // userId, online
-        public event Action<IReadOnlyList<string>> MessageDeleted; // message_ids
+        public event Action<string> TypingReceived; 
+        public event Action<string> SeenReceived; 
+        public event Action<string, bool> UserOnlineChanged; 
+        public event Action<IReadOnlyList<string>> MessageDeleted; 
         public event Action<UserDetailsDto> UserDetailsReceived;
 
         public ChatBLL(ChatSocketDAL socket)
@@ -71,6 +71,7 @@ namespace BusinessLogic
             return _socket.SendMessage(new WSMessageDto
             {
                 Type = "text",
+                From = SessionManager.UserId,
                 To = toUserId,
                 Content = content,
                 TempId = Guid.NewGuid().ToString("N")
@@ -89,6 +90,7 @@ namespace BusinessLogic
             return _socket.SendMessage(new WSMessageDto
             {
                 Type = string.IsNullOrWhiteSpace(type) ? "file" : type,
+                From = SessionManager.UserId,
                 To = toUserId,
                 Content = payload,
                 TempId = Guid.NewGuid().ToString("N")
@@ -169,7 +171,7 @@ namespace BusinessLogic
             if (ids.Count == 0)
                 return Task.CompletedTask;
 
-            return _socket.SendMessage(new DeleteMessageDto
+            return _socket.SendMessage(new WSMessageDto
             {
                 Type = "delete_message",
                 To = toUserId,
@@ -238,7 +240,6 @@ namespace BusinessLogic
                     }
                     default:
                     {
-                        // treat as incoming chat message (text/image/video/...)
                         if (type is "text" or "image" or "video" or "voice" or "file" or "deleted" or "call")
                         {
                             var m = JsonSerializer.Deserialize<ChatMessageDto>(json, _jsonOptions);
@@ -260,4 +261,3 @@ namespace BusinessLogic
         }
     }
 }
-

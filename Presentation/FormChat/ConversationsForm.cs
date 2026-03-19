@@ -310,7 +310,8 @@ namespace Presentation.FormChat
                 BackColor = Color.FromArgb(255, 30, 100),
                 ForeColor = Color.White,
                 Font = new Font("Segoe UI", 9, FontStyle.Bold),
-                Visible = c.UnreadCount > 0
+                Visible = c.UnreadCount > 0,
+                Text = c.UnreadCount > 99 ? "99+" : c.UnreadCount.ToString()
             };
             ApplyPill(unread);
 
@@ -458,4 +459,3 @@ namespace Presentation.FormChat
         }
     }
 }
-

@@ -9,6 +9,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.Net.Http;
+using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -51,6 +52,16 @@ namespace Presentation
 
         private void InitUi()
         {
+            // Tăng tốc độ render, giảm flicker cho Form
+            this.DoubleBuffered = true;
+            
+            // Tăng tốc độ render, giảm flicker cho FlowLayoutPanel (PostFeed) và các panel chứa nội dung
+            typeof(Control).InvokeMember("DoubleBuffered",
+                BindingFlags.SetProperty | BindingFlags.Instance | BindingFlags.NonPublic,
+                null, PostFeed, new object[] { true });
+            typeof(Control).InvokeMember("DoubleBuffered",
+                BindingFlags.SetProperty | BindingFlags.Instance | BindingFlags.NonPublic,
+                null, pnlContent, new object[] { true });
 
             PostFeed.AutoScroll = true;
             PostFeed.FlowDirection = FlowDirection.TopDown;
@@ -878,27 +889,6 @@ namespace Presentation
             if (span.TotalHours < 24) return $"{(int)span.TotalHours} giờ trước";
 
             return localTime.ToString("dd/MM/yyyy HH:mm");
-        }
-
-        private void LoadSuggestions()
-        {
-            pnlSuggested.Controls.Clear();
-
-            SuggestionItem item1 = new SuggestionItem();
-            SuggestionItem item2 = new SuggestionItem();
-            item1.SetData("Đỗ Khánh Liên Bucket", "Nữ", 25, "5km");
-            item1.SetData("Đỗ Khánh Cyka Blyat", "hoabinh", 6, "0km");
-            pnlSuggested.Controls.Add(item1);
-            pnlSuggested.Controls.Add(item2);
-        }
-
-        private void MainDashboard_Load(object sender, EventArgs e)
-        {
-        }
-
-        private void MainDashboard_Load_1(object sender, EventArgs e)
-        {
-            LoadSuggestions();
         }
 
         private void btnProfile_Click(object sender, EventArgs e)

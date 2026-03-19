@@ -23,7 +23,7 @@ namespace Presentation.FormChat
         private TextBox _input;
         private Button _btnSend;
         private Button _btnAttach;
-        private Label _lblTyping;
+        private Panel _pnlTyping;
         private Label _lblStatus;
         private PictureBox _avatarBox;
 
@@ -70,13 +70,14 @@ namespace Presentation.FormChat
             Controls.Add(footer);
             Controls.Add(header);
 
+            BuildTypingIndicator();
             BuildContextMenus();
 
             _typingTimer = new System.Windows.Forms.Timer { Interval = 2500 };
             _typingTimer.Tick += (_, __) =>
             {
                 if ((DateTime.UtcNow - _lastTypingShownAt).TotalMilliseconds > 2200)
-                    _lblTyping.Visible = false;
+                    SetTypingVisible(false);
             };
             _typingTimer.Start();
 
@@ -165,21 +166,10 @@ namespace Presentation.FormChat
                 Location = new Point(_avatarBox.Right + 10, 40)
             };
 
-            _lblTyping = new Label
-            {
-                Text = "Đang nhập...",
-                AutoSize = true,
-                Font = new Font("Segoe UI", 8, FontStyle.Italic),
-                ForeColor = Color.FromArgb(255, 30, 100),
-                Location = new Point(_avatarBox.Right + 10, 56),
-                Visible = false
-            };
-
             header.Controls.Add(btnBack);
             header.Controls.Add(_avatarBox);
             header.Controls.Add(lblName);
             header.Controls.Add(_lblStatus);
-            header.Controls.Add(_lblTyping);
             header.Controls.Add(new Panel { Dock = DockStyle.Bottom, Height = 1, BackColor = Color.FromArgb(235, 235, 235) });
 
             return header;
@@ -372,7 +362,7 @@ namespace Presentation.FormChat
             BeginInvoke(new Action(() =>
             {
                 _lastTypingShownAt = DateTime.UtcNow;
-                _lblTyping.Visible = true;
+                SetTypingVisible(true);
             }));
         }
 
@@ -387,6 +377,11 @@ namespace Presentation.FormChat
                 if (messages == null || messages.Count == 0)
                 {
                     _messages.Controls.Add(MakeHint("Chưa có tin nhắn. Gửi tin nhắn đầu tiên nhé."));
+                    if (_pnlTyping != null && !_pnlTyping.IsDisposed)
+                    {
+                        if (!_messages.Controls.Contains(_pnlTyping)) _messages.Controls.Add(_pnlTyping);
+                        _messages.Controls.SetChildIndex(_pnlTyping, _messages.Controls.Count);
+                    }
                     return;
                 }
 
@@ -682,6 +677,28 @@ namespace Presentation.FormChat
                 }
             };
 
+            PictureBox avatarBox = null;
+            if (!mine)
+            {
+                avatarBox = new PictureBox
+                {
+                    Size = new Size(32, 32),
+                    Location = new Point(0, 0),
+                    SizeMode = PictureBoxSizeMode.Zoom,
+                    BackColor = Color.FromArgb(238, 238, 238)
+                };
+                ApplyRound(avatarBox);
+                _ = Task.Run(async () =>
+                {
+                    var img = await TryLoadImageAsync(_withAvatar);
+                    if (img != null && !avatarBox.IsDisposed)
+                    {
+                        try { avatarBox.Invoke(new Action(() => avatarBox.Image = img)); } catch { }
+                    }
+                });
+                wrap.Controls.Add(avatarBox);
+            }
+
             var bubble = new Panel
             {
                 BackColor = mine ? Color.FromArgb(255, 30, 100) : Color.White,
@@ -699,7 +716,8 @@ namespace Presentation.FormChat
                     AutoSize = true,
                     MaximumSize = new Size(480, 0),
                     Font = new Font("Segoe UI", 9, FontStyle.Italic),
-                    ForeColor = Color.Gray
+                    ForeColor = Color.Gray,
+                    Location = new Point(10, 8)
                 };
                 contentCtrl = text;
                 bubble.BackColor = Color.FromArgb(245, 246, 250);
@@ -711,7 +729,8 @@ namespace Presentation.FormChat
                     SizeMode = PictureBoxSizeMode.Zoom,
                     Width = 280,
                     Height = 180,
-                    BackColor = Color.FromArgb(18, 18, 18)
+                    BackColor = Color.FromArgb(18, 18, 18),
+                    Location = new Point(10, 8)
                 };
                 contentCtrl = pb;
                 _ = Task.Run(async () =>
@@ -731,7 +750,8 @@ namespace Presentation.FormChat
                     AutoSize = true,
                     MaximumSize = new Size(480, 0),
                     Font = new Font("Segoe UI", 10),
-                    ForeColor = mine ? Color.White : Color.FromArgb(30, 30, 30)
+                    ForeColor = mine ? Color.White : Color.FromArgb(30, 30, 30),
+                    Location = new Point(10, 8)
                 };
                 contentCtrl = text;
             }
@@ -747,19 +767,34 @@ namespace Presentation.FormChat
 
             bubble.Controls.Add(contentCtrl);
             bubble.Controls.Add(time);
-            time.Top = contentCtrl.Bottom + 4;
-            time.Left = mine ? Math.Max(0, bubble.Width - bubble.Padding.Right - time.PreferredWidth) : Math.Max(0, bubble.Padding.Left);
 
             bubble.Width = Math.Min(520, Math.Max(70, contentCtrl.PreferredSize.Width + bubble.Padding.Horizontal));
+            time.Top = contentCtrl.Bottom + 4;
+            time.Left = mine ? Math.Max(0, bubble.Width - bubble.Padding.Right - time.PreferredWidth) : Math.Max(0, bubble.Padding.Left);
             bubble.Height = time.Bottom + bubble.Padding.Bottom;
 
             void Layout()
             {
                 wrap.Width = _messages.ClientSize.Width - 28;
-                var left = mine ? (wrap.Width - bubble.Width) : 0;
-                bubble.Left = Math.Max(0, left);
+                if (mine)
+                {
+                    bubble.Left = Math.Max(0, wrap.Width - bubble.Width);
+                }
+                else
+                {
+                    if (avatarBox != null)
+                    {
+                        avatarBox.Left = 0;
+                        avatarBox.Top = 0;
+                        bubble.Left = avatarBox.Right + 8;
+                    }
+                    else
+                    {
+                        bubble.Left = 0;
+                    }
+                }
                 bubble.Top = 0;
-                wrap.Height = bubble.Bottom;
+                wrap.Height = Math.Max(bubble.Bottom, avatarBox?.Bottom ?? 0);
             }
 
             wrap.Controls.Add(bubble);
@@ -768,9 +803,20 @@ namespace Presentation.FormChat
             Layout();
 
             if (append)
+            {
                 _messages.Controls.Add(wrap);
+            }
             else
+            {
                 _messages.Controls.Add(wrap);
+                _messages.Controls.SetChildIndex(wrap, 0);
+            }
+
+            if (_pnlTyping != null && !_pnlTyping.IsDisposed)
+            {
+                if (!_messages.Controls.Contains(_pnlTyping)) _messages.Controls.Add(_pnlTyping);
+                _messages.Controls.SetChildIndex(_pnlTyping, _messages.Controls.Count);
+            }
 
             if (!string.IsNullOrWhiteSpace(m.TempId))
                 _bubbleByTempId[m.TempId] = wrap;
@@ -846,6 +892,84 @@ namespace Presentation.FormChat
             p.SizeChanged += (_, __) => Update();
         }
 
+        private void BuildTypingIndicator()
+        {
+            _pnlTyping = new Panel
+            {
+                Width = _messages.ClientSize.Width - 28,
+                Height = 40,
+                BackColor = Color.Transparent,
+                Margin = new Padding(0, 0, 0, 8),
+                Visible = false
+            };
+
+            var avatarBox = new PictureBox
+            {
+                Size = new Size(32, 32),
+                Location = new Point(0, 0),
+                BackColor = Color.FromArgb(238, 238, 238),
+                SizeMode = PictureBoxSizeMode.Zoom
+            };
+            ApplyRound(avatarBox);
+            _ = Task.Run(async () =>
+            {
+                var img = await TryLoadImageAsync(_withAvatar);
+                if (img != null && !avatarBox.IsDisposed)
+                {
+                    try { avatarBox.Invoke(new Action(() => avatarBox.Image = img)); } catch { }
+                }
+            });
+
+            var bubble = new Panel
+            {
+                BackColor = Color.White,
+                Padding = new Padding(10, 8, 10, 8),
+                Location = new Point(avatarBox.Right + 8, 0)
+            };
+            ApplyBubble(bubble);
+
+            var lbl = new Label
+            {
+                Text = "Đang nhập...",
+                AutoSize = true,
+                Font = new Font("Segoe UI", 9, FontStyle.Italic),
+                ForeColor = Color.Gray,
+                Location = new Point(10, 8)
+            };
+            bubble.Controls.Add(lbl);
+
+            bubble.Width = lbl.PreferredWidth + bubble.Padding.Horizontal;
+            bubble.Height = lbl.PreferredHeight + bubble.Padding.Vertical;
+            _pnlTyping.Height = Math.Max(avatarBox.Bottom, bubble.Bottom);
+
+            _pnlTyping.Controls.Add(avatarBox);
+            _pnlTyping.Controls.Add(bubble);
+
+            _messages.Controls.Add(_pnlTyping);
+
+            _messages.SizeChanged += (_, __) =>
+            {
+                if (_pnlTyping != null && !_pnlTyping.IsDisposed)
+                    _pnlTyping.Width = _messages.ClientSize.Width - 28;
+            };
+        }
+
+        private void SetTypingVisible(bool visible)
+        {
+            if (_pnlTyping == null || _pnlTyping.IsDisposed) return;
+            if (_pnlTyping.Visible == visible && _messages.Controls.Contains(_pnlTyping)) return;
+            
+            _pnlTyping.Visible = visible;
+            if (visible)
+            {
+                if (!_messages.Controls.Contains(_pnlTyping))
+                    _messages.Controls.Add(_pnlTyping);
+
+                _messages.Controls.SetChildIndex(_pnlTyping, _messages.Controls.Count);
+                ScrollToBottom();
+            }
+        }
+
         private sealed class BubbleMeta
         {
             public string StableId { get; init; }
@@ -896,4 +1020,3 @@ namespace Presentation.FormChat
         }
     }
 }
-
