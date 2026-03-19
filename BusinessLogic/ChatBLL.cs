@@ -32,6 +32,12 @@ namespace BusinessLogic
         public event Action<string, bool> UserOnlineChanged; 
         public event Action<IReadOnlyList<string>> MessageDeleted; 
         public event Action<UserDetailsDto> UserDetailsReceived;
+        
+        public event Action<string, string, string, string> CallOfferReceived; 
+        public event Action<string, string> CallCreated; 
+        public event Action<string, string, string> CallAnswerReceived; 
+        public event Action<string, string> IceCandidateReceived; 
+        public event Action<string, int> CallEnded; 
 
         public ChatBLL(ChatSocketDAL socket)
         {
@@ -200,6 +206,51 @@ namespace BusinessLogic
             });
         }
 
+        public Task SendCallOfferAsync(string toUserId, string callType, string offer)
+        {
+            if (string.IsNullOrWhiteSpace(toUserId)) return Task.CompletedTask;
+            return _socket.SendMessage(new
+            {
+                type = "offer",
+                to = toUserId,
+                content = callType,
+                offer = offer
+            });
+        }
+
+        public Task SendCallAnswerAsync(string toUserId, string messageId, string answer)
+        {
+            if (string.IsNullOrWhiteSpace(toUserId)) return Task.CompletedTask;
+            return _socket.SendMessage(new
+            {
+                type = "answer",
+                to = toUserId,
+                id = messageId,
+                answer = answer
+            });
+        }
+
+        public Task SendIceCandidateAsync(string toUserId, string candidate)
+        {
+            if (string.IsNullOrWhiteSpace(toUserId)) return Task.CompletedTask;
+            return _socket.SendMessage(new
+            {
+                type = "ice-candidate",
+                to = toUserId,
+                candidate = candidate
+            });
+        }
+
+        public Task EndCallAsync(string messageId)
+        {
+            if (string.IsNullOrWhiteSpace(messageId)) return Task.CompletedTask;
+            return _socket.SendMessage(new
+            {
+                type = "call_end",
+                id = messageId
+            });
+        }
+
         private void HandleIncoming(string json)
         {
             try
@@ -279,6 +330,69 @@ namespace BusinessLogic
                         var dto = JsonSerializer.Deserialize<UserDetailsDto>(json, _jsonOptions);
                         if (dto != null)
                             UserDetailsReceived?.Invoke(dto);
+                        break;
+                    }
+                    case "offer":
+                    {
+                        var from = doc.RootElement.TryGetProperty("from", out var elFrom) ? elFrom.GetString() : "";
+                        var msgId = doc.RootElement.TryGetProperty("message_id", out var elMsgId) ? elMsgId.GetString() : "";
+                        var offer = doc.RootElement.TryGetProperty("offer", out var elOffer) ? elOffer.GetString() : "";
+                        var callType = doc.RootElement.TryGetProperty("call_type", out var elCallType) ? elCallType.GetString() : "";
+                        if (!string.IsNullOrWhiteSpace(from) && !string.IsNullOrWhiteSpace(offer))
+                            CallOfferReceived?.Invoke(from, msgId, offer, callType);
+
+                        MessageReceived?.Invoke(new ChatMessageDto
+                        {
+                            Id = msgId,
+                            From = from,
+                            To = SessionManager.UserId,
+                            Type = "call",
+                            Content = callType,
+                            SentAt = DateTime.UtcNow
+                        });
+                        break;
+                    }
+                    case "call_created":
+                    {
+                        var msgId = doc.RootElement.TryGetProperty("message_id", out var elMsgId) ? elMsgId.GetString() : "";
+                        var to = doc.RootElement.TryGetProperty("to", out var elTo) ? elTo.GetString() : "";
+                        if (!string.IsNullOrWhiteSpace(msgId))
+                            CallCreated?.Invoke(msgId, to);
+
+                        MessageReceived?.Invoke(new ChatMessageDto
+                        {
+                            Id = msgId,
+                            From = SessionManager.UserId,
+                            To = to,
+                            Type = "call",
+                            Content = "voice",
+                            SentAt = DateTime.UtcNow
+                        });
+                        break;
+                    }
+                    case "answer":
+                    {
+                        var from = doc.RootElement.TryGetProperty("from", out var elFrom) ? elFrom.GetString() : "";
+                        var msgId = doc.RootElement.TryGetProperty("message_id", out var elMsgId) ? elMsgId.GetString() : "";
+                        var answer = doc.RootElement.TryGetProperty("answer", out var elAnswer) ? elAnswer.GetString() : "";
+                        if (!string.IsNullOrWhiteSpace(from) && !string.IsNullOrWhiteSpace(answer))
+                            CallAnswerReceived?.Invoke(from, msgId, answer);
+                        break;
+                    }
+                    case "ice-candidate":
+                    {
+                        var from = doc.RootElement.TryGetProperty("from", out var elFrom) ? elFrom.GetString() : "";
+                        var candidate = doc.RootElement.TryGetProperty("candidate", out var elCandidate) ? elCandidate.GetString() : "";
+                        if (!string.IsNullOrWhiteSpace(from) && !string.IsNullOrWhiteSpace(candidate))
+                            IceCandidateReceived?.Invoke(from, candidate);
+                        break;
+                    }
+                    case "call_end":
+                    {
+                        var msgId = doc.RootElement.TryGetProperty("message_id", out var elMsgId) ? elMsgId.GetString() : "";
+                        var duration = doc.RootElement.TryGetProperty("duration", out var elDur) && elDur.TryGetInt32(out var d) ? d : 0;
+                        if (!string.IsNullOrWhiteSpace(msgId))
+                            CallEnded?.Invoke(msgId, duration);
                         break;
                     }
                     default:
