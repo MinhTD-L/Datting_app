@@ -39,6 +39,7 @@ namespace Presentation.FormChat
         private bool _incomingStartRequested = false;
         private string _pendingRemoteAnswer;
         private readonly List<string> _pendingIceCandidates = new();
+        private bool _hasShownWebRtcError = false;
 
         private const string BaseUrl = "https://litmatchclone-production.up.railway.app";
 
@@ -355,7 +356,22 @@ namespace Presentation.FormChat
                     if (doc.RootElement.TryGetProperty("message", out var msgEl))
                     {
                         var msg = msgEl.GetString();
-                        PostToUi(() => _lblStatus.Text = "Loi WebRTC: " + (msg ?? ""));
+                        PostToUi(() =>
+                        {
+                            _lblStatus.Text = "Loi WebRTC: " + (msg ?? "");
+
+                            // Show once so you get the full error text while debugging.
+                            if (!_hasShownWebRtcError)
+                            {
+                                _hasShownWebRtcError = true;
+                                try
+                                {
+                                    MessageBox.Show(this, "Loi WebRTC:\n" + (msg ?? ""), "WebRTC Error",
+                                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                }
+                                catch { }
+                            }
+                        });
                     }
                     break;
                 }
@@ -400,6 +416,8 @@ namespace Presentation.FormChat
 
             // JS can receive messages only after the page is loaded.
             _webViewReady = true;
+
+            _hasShownWebRtcError = false;
 
             _ = PostToJsAsync(new
             {
@@ -528,6 +546,10 @@ namespace Presentation.FormChat
     }
 
     async function getLocalMedia(){
+      if (!navigator || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+        const details = `navigator.mediaDevices.getUserMedia is not available (isSecureContext=${window.isSecureContext})`;
+        throw new Error(details);
+      }
       const wantVideo = callType === 'video';
       return await navigator.mediaDevices.getUserMedia({ audio: true, video: wantVideo });
     }
@@ -535,6 +557,7 @@ namespace Presentation.FormChat
     async function startOutgoing(){
       ensurePc();
       localStream = await getLocalMedia();
+      if (!localStream) throw new Error("getUserMedia returned null/undefined");
       for (const track of localStream.getTracks()) pc.addTrack(track, localStream);
 
       if (callType === 'video'){
@@ -551,6 +574,7 @@ namespace Presentation.FormChat
     async function startIncoming(){
       ensurePc();
       localStream = await getLocalMedia();
+      if (!localStream) throw new Error("getUserMedia returned null/undefined");
       for (const track of localStream.getTracks()) pc.addTrack(track, localStream);
 
       if (callType === 'video'){
@@ -637,12 +661,18 @@ namespace Presentation.FormChat
           pendingRemoteIce = [];
           pendingRemoteAnswer = null;
           if (!incoming){
-            startOutgoing().catch(err => post({ type:'error', message: String(err) }));
+            startOutgoing().catch(err => {
+              const msg = err && (err.stack || err.message) ? (err.stack || err.message) : String(err);
+              post({ type:'error', message: msg });
+            });
           }
           break;
         case 'accept':
           if (incoming){
-            startIncoming().catch(err => post({ type:'error', message: String(err) }));
+            startIncoming().catch(err => {
+              const msg = err && (err.stack || err.message) ? (err.stack || err.message) : String(err);
+              post({ type:'error', message: msg });
+            });
           }
           break;
         case 'remote-answer':
