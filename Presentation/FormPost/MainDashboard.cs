@@ -233,6 +233,112 @@ namespace Presentation
             _feedLoadingOverlay.BringToFront();
         }
 
+        private void WireGlobalCallEvents()
+        {
+            _chatBll.CallOfferReceived += OnCallOfferReceived;
+            _chatBll.CallCreated += OnCallCreated;
+            _chatBll.CallAnswerReceived += OnCallAnswerReceived;
+            _chatBll.IceCandidateReceived += OnIceCandidateReceived;
+            _chatBll.CallEnded += OnCallEnded;
+            FormClosed += (_, __) => UnwireGlobalCallEvents();
+        }
+
+        private void UnwireGlobalCallEvents()
+        {
+            _chatBll.CallOfferReceived -= OnCallOfferReceived;
+            _chatBll.CallCreated -= OnCallCreated;
+            _chatBll.CallAnswerReceived -= OnCallAnswerReceived;
+            _chatBll.IceCandidateReceived -= OnIceCandidateReceived;
+            _chatBll.CallEnded -= OnCallEnded;
+        }
+
+        public void StartOutgoingCall(string toUserId, string toName, string toAvatar, string callType)
+        {
+            _earlyIceCandidates.Clear();
+            _earlyAnswer = null;
+            _earlyAnswerMsgId = null;
+
+            _activeCallForm = new CallForm(_chatBll, toUserId, toName, toAvatar, false, callType);
+            _activeCallForm.FormClosed += (_, __) => _activeCallForm = null;
+            _activeCallForm.Show(this);
+        }
+
+        private void OnCallOfferReceived(string from, string msgId, string offer, string callType)
+        {
+            if (IsDisposed) return;
+            BeginInvoke(new Action(() =>
+            {
+                if (_activeCallForm != null && !_activeCallForm.IsDisposed) return;
+
+                _activeCallForm = new CallForm(_chatBll, from, "Cuộc gọi đến", "", true, callType, msgId, offer);
+                _activeCallForm.FormClosed += (_, __) => _activeCallForm = null;
+
+                foreach (var c in _earlyIceCandidates)
+                    _activeCallForm.AddEarlyIceCandidate(c);
+                _earlyIceCandidates.Clear();
+
+                if (_earlyAnswer != null)
+                {
+                    _activeCallForm.AddEarlyAnswer(_earlyAnswerMsgId, _earlyAnswer);
+                    _earlyAnswer = null;
+                    _earlyAnswerMsgId = null;
+                }
+
+                _activeCallForm.Show(this);
+            }));
+        }
+
+        private void OnCallCreated(string msgId, string toUserId)
+        {
+            if (IsDisposed) return;
+            BeginInvoke(new Action(() =>
+            {
+                if (_activeCallForm != null && !_activeCallForm.IsDisposed)
+                    _activeCallForm.SetCallCreated(msgId);
+            }));
+        }
+
+        private void OnCallAnswerReceived(string from, string msgId, string answer)
+        {
+            if (IsDisposed) return;
+            BeginInvoke(new Action(() =>
+            {
+                if (_activeCallForm != null && !_activeCallForm.IsDisposed)
+                    _activeCallForm.AddEarlyAnswer(msgId, answer);
+                else
+                {
+                    _earlyAnswer = answer;
+                    _earlyAnswerMsgId = msgId;
+                }
+            }));
+        }
+
+        private void OnIceCandidateReceived(string from, string candidate)
+        {
+            if (IsDisposed) return;
+            BeginInvoke(new Action(() =>
+            {
+                if (_activeCallForm != null && !_activeCallForm.IsDisposed)
+                    _activeCallForm.AddEarlyIceCandidate(candidate);
+                else
+                    _earlyIceCandidates.Add(candidate);
+            }));
+        }
+
+        private void OnCallEnded(string msgId, int duration)
+        {
+            if (IsDisposed) return;
+            BeginInvoke(new Action(() =>
+            {
+                if (_activeCallForm != null && !_activeCallForm.IsDisposed)
+                    _activeCallForm.HandleCallEnded(msgId);
+
+                _earlyIceCandidates.Clear();
+                _earlyAnswer = null;
+                _earlyAnswerMsgId = null;
+            }));
+        }
+
         private async void Dashboard_Load(object sender, EventArgs e)
         {
             await LoadFriendIdsAsync();
