@@ -210,36 +210,57 @@ namespace BusinessLogic
         public Task SendCallOfferAsync(string toUserId, string callType, string offer)
         {
             if (string.IsNullOrWhiteSpace(toUserId)) return Task.CompletedTask;
+
+            JsonElement parsedOffer;
+            using (var doc = JsonDocument.Parse(offer))
+            {
+                parsedOffer = doc.RootElement.Clone();
+            }
+
             return _socket.SendMessage(new
             {
                 type = "offer",
                 to = toUserId,
                 content = callType,
-                offer = offer
+                offer = parsedOffer
             });
         }
 
         public Task SendCallAnswerAsync(string toUserId, string messageId, string answer)
         {
             if (string.IsNullOrWhiteSpace(toUserId)) return Task.CompletedTask;
+
+            JsonElement parsedAnswer;
+            using (var doc = JsonDocument.Parse(answer))
+            {
+                parsedAnswer = doc.RootElement.Clone();
+            }
+
             return _socket.SendMessage(new
             {
                 type = "answer",
                 to = toUserId,
                 id = messageId,
-                answer = answer
+                answer = parsedAnswer
             });
         }
 
         public Task SendIceCandidateAsync(string toUserId, string messageId, string candidate)
         {
             if (string.IsNullOrWhiteSpace(toUserId)) return Task.CompletedTask;
+
+            JsonElement parsedCandidate;
+            using (var doc = JsonDocument.Parse(candidate))
+            {
+                parsedCandidate = doc.RootElement.Clone();
+            }
+
             return _socket.SendMessage(new
             {
                 type = "ice-candidate",
                 to = toUserId,
                 id = messageId,
-                candidate = candidate
+                candidate = parsedCandidate
             });
         }
 
