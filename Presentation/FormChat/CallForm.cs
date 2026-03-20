@@ -441,6 +441,7 @@ namespace Presentation.FormChat
   <style>
     html, body { margin:0; padding:0; background:#000; overflow:hidden; width:100%; height:100%; }
     #remoteVideo { width:100%; height:100%; object-fit:cover; background:#000; }
+    #remoteAudio { display:none; }
     #localVideo {
       position:absolute; right:12px; bottom:12px;
       width:120px; height:80px; object-fit:cover;
@@ -451,11 +452,13 @@ namespace Presentation.FormChat
 </head>
 <body>
   <video id="remoteVideo" autoplay playsinline></video>
+  <audio id="remoteAudio" autoplay></audio>
   <video id="localVideo" autoplay playsinline muted></video>
 
   <script>
+    // Send plain object so C# can read it via WebMessageAsJson.
     const post = (msg) => {
-      try { window.chrome.webview.postMessage(JSON.stringify(msg)); } catch (e) { }
+      try { window.chrome.webview.postMessage(msg); } catch (e) { }
     };
 
     function parseDescription(text, defaultType){
@@ -484,6 +487,7 @@ namespace Presentation.FormChat
     let pendingRemoteAnswer = null;
 
     const remoteVideo = document.getElementById('remoteVideo');
+    const remoteAudio = document.getElementById('remoteAudio');
     const localVideo = document.getElementById('localVideo');
 
     function ensurePc(){
@@ -505,9 +509,11 @@ namespace Presentation.FormChat
         if (!remoteStream) remoteStream = new MediaStream();
         remoteStream.addTrack(ev.track);
 
-        // Use the video element for audio too (most browsers support it).
+        // Attach to both video and audio for better voice support.
         remoteVideo.srcObject = remoteStream;
+        remoteAudio.srcObject = remoteStream;
         remoteVideo.play().catch(() => { });
+        remoteAudio.play().catch(() => { });
 
         if (!connected){
           connected = true;
