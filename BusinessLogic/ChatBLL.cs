@@ -377,7 +377,11 @@ namespace BusinessLogic
                     {
                         var from = doc.RootElement.TryGetProperty("from", out var elFrom) ? elFrom.GetString() : "";
                         var msgId = doc.RootElement.TryGetProperty("message_id", out var elMsgId) ? elMsgId.GetString() : "";
-                        var offer = doc.RootElement.TryGetProperty("offer", out var elOffer) ? elOffer.GetString() : "";
+                        
+                        var offer = "";
+                        if (doc.RootElement.TryGetProperty("offer", out var elOffer))
+                            offer = elOffer.ValueKind == JsonValueKind.String ? elOffer.GetString() : elOffer.GetRawText();
+                            
                         var callType = doc.RootElement.TryGetProperty("call_type", out var elCallType) ? elCallType.GetString() : "";
                         if (!string.IsNullOrWhiteSpace(from) && !string.IsNullOrWhiteSpace(offer))
                             CallOfferReceived?.Invoke(from, msgId, offer, callType);
