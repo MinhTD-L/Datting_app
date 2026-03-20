@@ -1,6 +1,8 @@
 using System;
 using System.Drawing;
 using System.Collections.Generic;
+using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Text.Json;
@@ -410,7 +412,22 @@ namespace Presentation.FormChat
             _webView.NavigationCompleted -= NavigationCompleted;
             _webView.NavigationCompleted += NavigationCompleted;
 
-            _webView.CoreWebView2.NavigateToString(WebRtcHtml);
+            // WebRTC's getUserMedia requires a secure context.
+            // NavigateToString uses an insecure origin (isSecureContext=false),
+            // so we host the HTML from a virtual HTTPS origin.
+            const string vHost = "appassets.example";
+            var tempDir = Path.Combine(Path.GetTempPath(), "btl_webrtc_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+            var indexPath = Path.Combine(tempDir, "index.html");
+            File.WriteAllText(indexPath, WebRtcHtml, Encoding.UTF8);
+
+            try { _webView.CoreWebView2.ClearVirtualHostNameToFolderMapping(vHost); } catch { }
+            _webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
+                vHost,
+                tempDir,
+                CoreWebView2HostResourceAccessKind.DenyCors);
+
+            _webView.CoreWebView2.Navigate($"https://{vHost}/index.html");
 
             await tcs.Task;
 
@@ -474,9 +491,9 @@ namespace Presentation.FormChat
   <video id="localVideo" autoplay playsinline muted></video>
 
   <script>
-    // Send plain object so C# can read it via WebMessageAsJson.
+    // Send JSON string so C# can always read via WebMessageAsJson.
     const post = (msg) => {
-      try { window.chrome.webview.postMessage(msg); } catch (e) { }
+      try { window.chrome.webview.postMessage(JSON.stringify(msg)); } catch (e) { }
     };
 
     function parseDescription(text, defaultType){
@@ -603,7 +620,8 @@ namespace Presentation.FormChat
 
     async function addRemoteIce(candidateText){
       if (!candidateText) return;
-      if (!pc){
+      // ICE can arrive before remoteDescription exists; buffer until we have it.
+      if (!pc || !pc.remoteDescription){
         pendingRemoteIce.push(candidateText);
         return;
       }
