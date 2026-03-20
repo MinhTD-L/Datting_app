@@ -564,23 +564,36 @@ namespace Presentation.FormChat
         post({ type: 'ice-candidate', candidate: JSON.stringify(cObj) });
       };
 
-      pc.oniceconnectionstatechange = () => log("ICE state: " + pc.iceConnectionState);
-      pc.onconnectionstatechange = () => log("Connection state: " + pc.connectionState);
+      pc.oniceconnectionstatechange = () => {
+        log("ICE state: " + pc.iceConnectionState);
+        if ((pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') && !connected) {
+          connected = true;
+          post({ type: 'connected' });
+        }
+      };
+
+      pc.onconnectionstatechange = () => {
+        log("Connection state: " + pc.connectionState);
+        if (pc.connectionState === 'connected' && !connected) {
+          connected = true;
+          post({ type: 'connected' });
+        }
+      };
 
       pc.ontrack = (ev) => {
         log("Received remote track: " + ev.track.kind);
-        if (!remoteStream) remoteStream = new MediaStream();
-        remoteStream.addTrack(ev.track);
-
-        // Attach to both video and audio for better voice support.
-        remoteVideo.srcObject = remoteStream;
-        remoteAudio.srcObject = remoteStream;
-        remoteVideo.play().catch(e => log("remoteVideo play error: " + e));
-        remoteAudio.play().catch(e => log("remoteAudio play error: " + e));
-
-        if (!connected){
-          connected = true;
-          post({ type: 'connected' });
+        if (ev.streams && ev.streams[0]) {
+          remoteStream = ev.streams[0];
+        } else {
+          if (!remoteStream) remoteStream = new MediaStream();
+          remoteStream.addTrack(ev.track);
+        }
+        
+        if (remoteVideo.srcObject !== remoteStream) {
+          remoteVideo.srcObject = remoteStream;
+          remoteAudio.srcObject = remoteStream;
+          remoteVideo.play().catch(e => log("remoteVideo play error: " + e));
+          remoteAudio.play().catch(e => log("remoteAudio play error: " + e));
         }
       };
 
