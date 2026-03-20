@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.IO;
 using DataTransferObject;
 
 namespace BusinessLogic
@@ -226,7 +227,6 @@ namespace BusinessLogic
                 type = "answer",
                 to = toUserId,
                 id = messageId,
-                message_id = messageId,
                 answer = answer
             });
         }
@@ -236,10 +236,9 @@ namespace BusinessLogic
             if (string.IsNullOrWhiteSpace(toUserId)) return Task.CompletedTask;
             return _socket.SendMessage(new
             {
-                type = "ice_candidate",
+                type = "ice-candidate",
                 to = toUserId,
                 id = messageId,
-                message_id = messageId,
                 candidate = candidate
             });
         }
@@ -254,6 +253,18 @@ namespace BusinessLogic
             });
         }
 
+        private void LogToFile(string message)
+        {
+            try
+            {
+                var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "webrtc_debug.log");
+                var logLine = $"[{DateTime.Now:HH:mm:ss.fff}] {message}{Environment.NewLine}";
+                File.AppendAllText(path, logLine);
+                System.Diagnostics.Debug.WriteLine(logLine);
+            }
+            catch { }
+        }
+
         private void HandleIncoming(string json)
         {
             try
@@ -263,6 +274,12 @@ namespace BusinessLogic
                     return;
 
                 var type = typeEl.GetString() ?? "";
+
+                // Theo dõi toàn bộ dữ liệu gọi điện trả về từ BE
+                if (type is "offer" or "answer" or "ice-candidate" or "ice_candidate" or "call_created" or "call_end")
+                {
+                    LogToFile($"[WS IN] {json}");
+                }
 
                 switch (type)
                 {
@@ -377,7 +394,15 @@ namespace BusinessLogic
                     {
                         var from = doc.RootElement.TryGetProperty("from", out var elFrom) ? elFrom.GetString() : "";
                         var msgId = doc.RootElement.TryGetProperty("message_id", out var elMsgId) ? elMsgId.GetString() : "";
-                        var answer = doc.RootElement.TryGetProperty("answer", out var elAnswer) ? elAnswer.GetString() : "";
+                        if (string.IsNullOrWhiteSpace(msgId) && doc.RootElement.TryGetProperty("id", out var elId))
+                            msgId = elId.GetString();
+
+                        var answer = "";
+                        if (doc.RootElement.TryGetProperty("answer", out var elAns))
+                            answer = elAns.ValueKind == JsonValueKind.String ? elAns.GetString() : elAns.GetRawText();
+                        else if (doc.RootElement.TryGetProperty("content", out var elContent))
+                            answer = elContent.ValueKind == JsonValueKind.String ? elContent.GetString() : elContent.GetRawText();
+
                         if (!string.IsNullOrWhiteSpace(from) && !string.IsNullOrWhiteSpace(answer))
                             CallAnswerReceived?.Invoke(from, msgId, answer);
                         break;
@@ -386,7 +411,13 @@ namespace BusinessLogic
                     case "ice_candidate":
                     {
                         var from = doc.RootElement.TryGetProperty("from", out var elFrom) ? elFrom.GetString() : "";
-                        var candidate = doc.RootElement.TryGetProperty("candidate", out var elCandidate) ? elCandidate.GetString() : "";
+                        var candidate = "";
+                        
+                        if (doc.RootElement.TryGetProperty("candidate", out var elCand))
+                            candidate = elCand.ValueKind == JsonValueKind.String ? elCand.GetString() : elCand.GetRawText();
+                        else if (doc.RootElement.TryGetProperty("content", out var elContent))
+                            candidate = elContent.ValueKind == JsonValueKind.String ? elContent.GetString() : elContent.GetRawText();
+
                         if (!string.IsNullOrWhiteSpace(from) && !string.IsNullOrWhiteSpace(candidate))
                             IceCandidateReceived?.Invoke(from, candidate);
                         break;

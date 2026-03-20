@@ -373,7 +373,7 @@ namespace Presentation.FormChat
         private void OnCallOfferReceived(string from, string msgId, string offer, string callType)
         {
             if (IsDisposed) return;
-            if (!string.Equals(from, _withUserId, StringComparison.Ordinal)) return;
+            if (!string.Equals(from, _withUserId, StringComparison.OrdinalIgnoreCase)) return;
 
             BeginInvoke(new Action(() =>
             {
@@ -400,7 +400,7 @@ namespace Presentation.FormChat
         private void OnCallCreated(string msgId, string toUserId)
         {
             if (IsDisposed) return;
-            if (!string.Equals(toUserId, _withUserId, StringComparison.Ordinal)) return;
+            if (!string.Equals(toUserId, _withUserId, StringComparison.OrdinalIgnoreCase)) return;
 
             BeginInvoke(new Action(() =>
             {
@@ -412,7 +412,7 @@ namespace Presentation.FormChat
         private void OnCallAnswerReceived(string from, string msgId, string answer)
         {
             if (IsDisposed) return;
-            if (!string.Equals(from, _withUserId, StringComparison.Ordinal)) return;
+            if (!string.Equals(from, _withUserId, StringComparison.OrdinalIgnoreCase)) return;
 
             BeginInvoke(new Action(() =>
             {
@@ -429,7 +429,7 @@ namespace Presentation.FormChat
         private void OnIceCandidateReceived(string from, string candidate)
         {
             if (IsDisposed) return;
-            if (!string.Equals(from, _withUserId, StringComparison.Ordinal)) return;
+            if (!string.Equals(from, _withUserId, StringComparison.OrdinalIgnoreCase)) return;
 
             BeginInvoke(new Action(() =>
             {
