@@ -69,6 +69,8 @@ namespace Presentation.FormChat
             MinimizeBox = false;
 
             BuildUI();
+            
+            LogToFile($"--- NEW CALL INITIATED: incoming={_incoming}, type={_callType}, userId={_userId}, msgId={_messageId} ---");
 
             Shown += CallForm_Shown;
             FormClosing += CallForm_FormClosing;
@@ -183,6 +185,18 @@ namespace Presentation.FormChat
             _btnEnd.BringToFront();
         }
 
+        private void LogToFile(string message)
+        {
+            try
+            {
+                var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "webrtc_debug.log");
+                var logLine = $"[{DateTime.Now:HH:mm:ss.fff}] {message}{Environment.NewLine}";
+                File.AppendAllText(path, logLine);
+                System.Diagnostics.Debug.WriteLine(logLine);
+            }
+            catch { }
+        }
+
         private async void CallForm_Shown(object sender, EventArgs e)
         {
             _ = Task.Run(async () =>
@@ -194,6 +208,7 @@ namespace Presentation.FormChat
                 }
             });
 
+            LogToFile("CallForm shown, ensuring WebRTC init...");
             await EnsureWebRtcInitializedAsync();
         }
 
@@ -227,6 +242,7 @@ namespace Presentation.FormChat
 
         private Task PostToJsAsync(object payload)
         {
+            LogToFile($"[C#->JS] {JsonSerializer.Serialize(payload)}");
             if (payload == null) return Task.CompletedTask;
             if (!_webViewReady) return Task.CompletedTask;
             if (_webView?.CoreWebView2 == null) return Task.CompletedTask;
@@ -246,6 +262,8 @@ namespace Presentation.FormChat
         private void WebView_CoreWebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
             if (IsDisposed) return;
+
+            LogToFile($"[JS->C# RAW] {e.WebMessageAsJson}");
 
             // WebView2 gives JSON text (because we use PostWebMessageAsJson).
             var raw = e.WebMessageAsJson;
@@ -281,6 +299,7 @@ namespace Presentation.FormChat
                     var offer = offerEl.GetString();
                     if (string.IsNullOrWhiteSpace(offer)) return;
 
+                    LogToFile("Sending call offer to backend...");
                     _ = _chatBll.SendCallOfferAsync(_userId, _callType, offer);
                     break;
                 }
@@ -291,6 +310,7 @@ namespace Presentation.FormChat
                     if (string.IsNullOrWhiteSpace(answer)) return;
 
                     if (string.IsNullOrWhiteSpace(_messageId)) return;
+                    LogToFile("Sending call answer to backend...");
                     _ = _chatBll.SendCallAnswerAsync(_userId, _messageId, answer);
                     break;
                 }
@@ -300,11 +320,13 @@ namespace Presentation.FormChat
                     var candidate = candEl.GetString();
                     if (string.IsNullOrWhiteSpace(candidate)) return;
 
+                    LogToFile("Sending ICE candidate to backend...");
                     _ = _chatBll.SendIceCandidateAsync(_userId, candidate);
                     break;
                 }
                 case "connected":
                 {
+                    LogToFile("JS reported WebRTC connected!");
                     PostToUi(() =>
                     {
                         if (_isCallActive) return;
@@ -346,6 +368,14 @@ namespace Presentation.FormChat
                                 catch { }
                             }
                         });
+                    }
+                    break;
+                }
+                case "log":
+                {
+                    if (doc.RootElement.TryGetProperty("message", out var msgEl))
+                    {
+                        LogToFile($"[JS LOG] {msgEl.GetString()}");
                     }
                     break;
                 }
@@ -403,6 +433,7 @@ namespace Presentation.FormChat
 
             await tcs.Task;
 
+            LogToFile("WebView navigation completed. JS is ready.");
             // JS can receive messages only after the page is loaded.
             _webViewReady = true;
 
@@ -419,12 +450,14 @@ namespace Presentation.FormChat
             if (_incomingStartRequested)
             {
                 _incomingStartRequested = false;
+                LogToFile("Executing deferred incoming start (accept).");
                 _ = PostToJsAsync(new { type = "accept" });
             }
 
             // Flush pending ICE candidates.
             if (_pendingIceCandidates.Count > 0)
             {
+                LogToFile($"Flushing {_pendingIceCandidates.Count} pending ICE candidates.");
                 foreach (var c in _pendingIceCandidates)
                     _ = PostToJsAsync(new { type = "remote-ice-candidate", candidate = c });
                 _pendingIceCandidates.Clear();
@@ -433,6 +466,7 @@ namespace Presentation.FormChat
             // Flush pending answer (outgoing side should receive it from backend).
             if (!string.IsNullOrWhiteSpace(_pendingRemoteAnswer))
             {
+                LogToFile("Flushing pending remote answer.");
                 var ans = _pendingRemoteAnswer;
                 _pendingRemoteAnswer = null;
                 _ = PostToJsAsync(new { type = "remote-answer", answer = ans });
@@ -469,6 +503,10 @@ namespace Presentation.FormChat
       try { window.chrome.webview.postMessage(JSON.stringify(msg)); } catch (e) { }
     };
 
+    const log = (msg) => {
+      post({ type: 'log', message: String(msg) });
+    };
+
     function parseDescription(text, defaultType){
       if (!text) return null;
       try {
@@ -500,6 +538,7 @@ namespace Presentation.FormChat
 
     function ensurePc(){
       if (pc) return pc;
+      log("Creating RTCPeerConnection...");
       pc = new RTCPeerConnection({
         iceServers: [
           { urls: "stun:stun.l.google.com:19302" },
@@ -520,19 +559,24 @@ namespace Presentation.FormChat
 
       pc.onicecandidate = (ev) => {
         if (!ev || !ev.candidate) return;
+        log("Generated local ICE candidate.");
         const cObj = ev.candidate.toJSON ? ev.candidate.toJSON() : ev.candidate;
         post({ type: 'ice-candidate', candidate: JSON.stringify(cObj) });
       };
 
+      pc.oniceconnectionstatechange = () => log("ICE state: " + pc.iceConnectionState);
+      pc.onconnectionstatechange = () => log("Connection state: " + pc.connectionState);
+
       pc.ontrack = (ev) => {
+        log("Received remote track: " + ev.track.kind);
         if (!remoteStream) remoteStream = new MediaStream();
         remoteStream.addTrack(ev.track);
 
         // Attach to both video and audio for better voice support.
         remoteVideo.srcObject = remoteStream;
         remoteAudio.srcObject = remoteStream;
-        remoteVideo.play().catch(() => { });
-        remoteAudio.play().catch(() => { });
+        remoteVideo.play().catch(e => log("remoteVideo play error: " + e));
+        remoteAudio.play().catch(e => log("remoteAudio play error: " + e));
 
         if (!connected){
           connected = true;
@@ -556,6 +600,7 @@ namespace Presentation.FormChat
     }
 
     async function startOutgoing(){
+      log("startOutgoing called");
       ensurePc();
       localStream = await getLocalMedia();
       if (!localStream) throw new Error("getUserMedia returned null/undefined");
@@ -564,15 +609,18 @@ namespace Presentation.FormChat
       if (callType === 'video'){
         localVideo.style.display = 'block';
         localVideo.srcObject = localStream;
-        localVideo.play().catch(() => { });
+        localVideo.play().catch(e => log("localVideo play error: " + e));
       }
 
+      log("Creating offer...");
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
+      log("Local description set (offer).");
       post({ type: 'offer', offer: JSON.stringify(pc.localDescription) });
     }
 
     async function startIncoming(){
+      log("startIncoming called");
       ensurePc();
       localStream = await getLocalMedia();
       if (!localStream) throw new Error("getUserMedia returned null/undefined");
@@ -581,24 +629,32 @@ namespace Presentation.FormChat
       if (callType === 'video'){
         localVideo.style.display = 'block';
         localVideo.srcObject = localStream;
-        localVideo.play().catch(() => { });
+        localVideo.play().catch(e => log("localVideo play error: " + e));
       }
 
+      log("Setting remote description (offer)...");
       const remoteDesc = parseDescription(remoteOfferText, 'offer');
       await pc.setRemoteDescription(remoteDesc);
+      log("Flushing pending ICE/Answer after remote desc set...");
       await flushPending();
+
+      log("Creating answer...");
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
+      log("Local description set (answer).");
       post({ type: 'answer', answer: JSON.stringify(pc.localDescription) });
     }
 
     async function applyRemoteAnswer(answerText){
+      log("applyRemoteAnswer called");
       if (!pc){
+        log("PC not ready, buffering remote answer");
         pendingRemoteAnswer = answerText;
         return;
       }
       const desc = parseDescription(answerText, 'answer');
       await pc.setRemoteDescription(desc);
+      log("Remote description set (answer).");
       await flushPending();
     }
 
@@ -606,33 +662,38 @@ namespace Presentation.FormChat
       if (!candidateText) return;
       // ICE can arrive before remoteDescription exists; buffer until we have it.
       if (!pc || !pc.remoteDescription){
+        log("PC or remoteDescription not ready, buffering ICE candidate");
         pendingRemoteIce.push(candidateText);
         return;
       }
       const cand = parseCandidate(candidateText);
       if (!cand) return;
       await pc.addIceCandidate(cand);
+      log("Added remote ICE candidate.");
     }
 
     async function flushPending(){
       if (!pc) return;
 
       if (pendingRemoteAnswer){
+        log("Flushing pending answer internally...");
         const ans = pendingRemoteAnswer;
         pendingRemoteAnswer = null;
-        try { await applyRemoteAnswer(ans); } catch (e) {}
+        try { await applyRemoteAnswer(ans); } catch (e) { log("Error applying buffered answer: " + e); }
       }
 
       if (!pc.remoteDescription) return;
 
       const ices = pendingRemoteIce || [];
       pendingRemoteIce = [];
+      if (ices.length > 0) log(`Flushing ${ices.length} pending ICE candidates internally...`);
       for (const c of ices){
-        try { await addRemoteIce(c); } catch (e) {}
+        try { await addRemoteIce(c); } catch (e) { log("Error adding buffered ICE: " + e); }
       }
     }
 
     function endCall(){
+      log("endCall called");
       try { if (pc){ pc.close(); pc = null; } } catch (e) {}
       try {
         if (localStream){
@@ -695,6 +756,7 @@ namespace Presentation.FormChat
 
         public void SetCallCreated(string msgId)
         {
+            LogToFile($"SetCallCreated: msgId={msgId}");
             _messageId = msgId;
             PostToUi(() =>
             {
@@ -707,6 +769,8 @@ namespace Presentation.FormChat
             if (!string.IsNullOrWhiteSpace(_messageId) &&
                 !string.Equals(msgId, _messageId, StringComparison.Ordinal))
                 return;
+                
+            LogToFile($"AddEarlyAnswer: msgId={msgId}");
 
             if (!_webViewReady)
             {
@@ -729,6 +793,8 @@ namespace Presentation.FormChat
         public void AddEarlyIceCandidate(string candidate)
         {
             if (string.IsNullOrWhiteSpace(candidate)) return;
+            
+            LogToFile("AddEarlyIceCandidate received.");
 
             if (!_webViewReady)
             {
@@ -746,6 +812,8 @@ namespace Presentation.FormChat
         public void HandleCallEnded(string msgId)
         {
             if (!string.Equals(msgId, _messageId, StringComparison.Ordinal)) return;
+            
+            LogToFile($"HandleCallEnded: msgId={msgId}");
 
             _ = PostToJsAsync(new { type = "end" });
 
@@ -793,6 +861,7 @@ namespace Presentation.FormChat
 
         private async void BtnAccept_Click(object sender, EventArgs e)
         {
+            LogToFile("BtnAccept_Click: User accepted incoming call.");
             _btnAccept.Visible = false;
             _btnReject.Visible = false;
             _btnEnd.Visible = true;
@@ -804,6 +873,7 @@ namespace Presentation.FormChat
 
             if (!_webViewReady)
             {
+                LogToFile("BtnAccept_Click: WebView not ready, deferring accept.");
                 _incomingStartRequested = true;
                 return;
             }
@@ -813,6 +883,7 @@ namespace Presentation.FormChat
 
         private async void BtnReject_Click(object sender, EventArgs e)
         {
+            LogToFile("BtnReject_Click: User rejected the call.");
             if (!string.IsNullOrWhiteSpace(_messageId))
                 await _chatBll.EndCallAsync(_messageId);
 
@@ -822,6 +893,7 @@ namespace Presentation.FormChat
 
         private async void BtnEnd_Click(object sender, EventArgs e)
         {
+            LogToFile("BtnEnd_Click: User ended the call.");
             if (!string.IsNullOrWhiteSpace(_messageId))
                 await _chatBll.EndCallAsync(_messageId);
 
@@ -831,6 +903,7 @@ namespace Presentation.FormChat
 
         private void CallForm_FormClosing(object sender, FormClosingEventArgs e)
         {
+            LogToFile("CallForm_FormClosing: Cleaning up.");
             _timer?.Stop();
             _ = PostToJsAsync(new { type = "end" });
             if (_isCallActive || _incoming) 
