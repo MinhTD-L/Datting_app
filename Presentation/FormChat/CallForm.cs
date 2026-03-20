@@ -69,7 +69,6 @@ namespace Presentation.FormChat
             MinimizeBox = false;
 
             BuildUI();
-            Wire();
 
             Shown += CallForm_Shown;
             FormClosing += CallForm_FormClosing;
@@ -196,42 +195,6 @@ namespace Presentation.FormChat
             });
 
             await EnsureWebRtcInitializedAsync();
-        }
-
-        private void Wire()
-        {
-            _chatBll.CallCreated += OnCallCreated;
-            _chatBll.CallAnswerReceived += OnCallAnswerReceived;
-            _chatBll.IceCandidateReceived += OnIceCandidateReceived;
-            _chatBll.CallEnded += OnCallEnded;
-        }
-
-        private void Unwire()
-        {
-            _chatBll.CallCreated -= OnCallCreated;
-            _chatBll.CallAnswerReceived -= OnCallAnswerReceived;
-            _chatBll.IceCandidateReceived -= OnIceCandidateReceived;
-            _chatBll.CallEnded -= OnCallEnded;
-        }
-
-        private void OnIceCandidateReceived(string from, string candidate)
-        {
-            if (IsDisposed) return;
-            if (!string.Equals(from, _userId, StringComparison.Ordinal)) return;
-            if (string.IsNullOrWhiteSpace(candidate)) return;
-
-            // Wait until WebView2/JS is ready; ICE may arrive early.
-            if (!_webViewReady)
-            {
-                _pendingIceCandidates.Add(candidate);
-                return;
-            }
-
-            _ = PostToJsAsync(new
-            {
-                type = "remote-ice-candidate",
-                candidate
-            });
         }
 
         private void PostToUi(Action action)
@@ -730,10 +693,8 @@ namespace Presentation.FormChat
 </html>
 """;
 
-        private void OnCallCreated(string msgId, string toUserId)
+        public void SetCallCreated(string msgId)
         {
-            if (IsDisposed) return;
-            if (!string.Equals(toUserId, _userId, StringComparison.Ordinal)) return;
             _messageId = msgId;
             PostToUi(() =>
             {
@@ -741,10 +702,8 @@ namespace Presentation.FormChat
             });
         }
 
-        private void OnCallAnswerReceived(string from, string msgId, string answer)
+        public void AddEarlyAnswer(string msgId, string answer)
         {
-            if (IsDisposed) return;
-            if (!string.Equals(from, _userId, StringComparison.Ordinal)) return;
             if (!string.IsNullOrWhiteSpace(_messageId) &&
                 !string.Equals(msgId, _messageId, StringComparison.Ordinal))
                 return;
@@ -767,9 +726,25 @@ namespace Presentation.FormChat
             });
         }
 
-        private void OnCallEnded(string msgId, int duration)
+        public void AddEarlyIceCandidate(string candidate)
         {
-            if (IsDisposed) return;
+            if (string.IsNullOrWhiteSpace(candidate)) return;
+
+            if (!_webViewReady)
+            {
+                _pendingIceCandidates.Add(candidate);
+                return;
+            }
+
+            _ = PostToJsAsync(new
+            {
+                type = "remote-ice-candidate",
+                candidate
+            });
+        }
+
+        public void HandleCallEnded(string msgId)
+        {
             if (!string.Equals(msgId, _messageId, StringComparison.Ordinal)) return;
 
             _ = PostToJsAsync(new { type = "end" });
@@ -858,7 +833,6 @@ namespace Presentation.FormChat
         {
             _timer?.Stop();
             _ = PostToJsAsync(new { type = "end" });
-            Unwire();
             if (_isCallActive || _incoming) 
             {
                 if (!string.IsNullOrWhiteSpace(_messageId))
