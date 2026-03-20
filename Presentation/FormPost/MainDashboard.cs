@@ -30,8 +30,16 @@ namespace Presentation
         private bool _hasUnreadMessages;
         private const int FeedMaxWidth = 680;
 
+        public static MainDashboard Instance { get; private set; }
+
+        private CallForm _activeCallForm;
+        private readonly System.Collections.Generic.List<string> _earlyIceCandidates = new();
+        private string _earlyAnswerMsgId = null;
+        private string _earlyAnswer = null;
+
         public MainDashboard()
         {
+            Instance = this;
             _postBll = BusinessLogic.AppServices.PostBll;
             _userBll = BusinessLogic.AppServices.UserBll;
             _friendBll = BusinessLogic.AppServices.FriendBll;
@@ -42,6 +50,7 @@ namespace Presentation
 
         public MainDashboard(PostBLL postBll, UserBLL userBll)
         {
+            Instance = this;
             _postBll = postBll ?? throw new ArgumentNullException(nameof(postBll));
             _userBll = userBll ?? throw new ArgumentNullException(nameof(userBll));
             _friendBll = BusinessLogic.AppServices.FriendBll;
@@ -94,6 +103,7 @@ namespace Presentation
 
             BuildMessagesDot();
             WireChatBadge();
+            WireGlobalCallEvents();
 
             btnMessages.Click += (_, __) =>
             {
