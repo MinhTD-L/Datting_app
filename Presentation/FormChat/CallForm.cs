@@ -539,8 +539,19 @@ namespace Presentation.FormChat
       if (pc) return pc;
       pc = new RTCPeerConnection({
         iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          { urls: 'stun:stun1.l.google.com:19302' }
+          { urls: "stun:stun.l.google.com:19302" },
+          {
+            urls: [
+              "turn:turn.cloudflare.com:3478?transport=udp",
+              "turn:turn.cloudflare.com:3478?transport=tcp",
+              "turns:turn.cloudflare.com:5349?transport=tcp",
+              "turn:turn.cloudflare.com:53?transport=udp",
+              "turn:turn.cloudflare.com:80?transport=tcp",
+              "turns:turn.cloudflare.com:443?transport=tcp"
+            ],
+            username: "g002f5cd1727b69b6567a6dfeccef6951b5b83918397937ecfc0032cd831bdab",
+            credential: "9973119094e668b4a3f92c15a70e122125c7e8491202daf5fd41b81b61fa8522"
+          }
         ]
       });
 

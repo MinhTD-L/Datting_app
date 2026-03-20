@@ -1,4 +1,4 @@
-﻿﻿using System;
+﻿﻿﻿﻿using System;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -121,7 +121,14 @@ public class ChatSocketDAL
 
                 if (!string.IsNullOrWhiteSpace(message))
                 {
-                    OnMessageReceived?.Invoke(message);
+                    try
+                    {
+                        OnMessageReceived?.Invoke(message);
+                    }
+                    catch (Exception ex)
+                    {
+                        OnError?.Invoke($"Lỗi xử lý tin nhắn: {ex.Message}");
+                    }
                 }
             }
         }
@@ -131,8 +138,7 @@ public class ChatSocketDAL
         }
         catch (Exception ex)
         {
-            OnError?.Invoke($"Receive error: {ex.Message}");
-            await HandleSocketClosed("Receive loop failed");
+            await HandleSocketClosed($"Lỗi nhận dữ liệu: {ex.Message}");
         }
     }
 
@@ -172,8 +178,7 @@ public class ChatSocketDAL
         }
         catch (Exception ex)
         {
-            OnError?.Invoke($"Heartbeat error: {ex.Message}");
-            await HandleSocketClosed("Heartbeat failed");
+            await HandleSocketClosed($"Lỗi Heartbeat: {ex.Message}");
         }
     }
 
