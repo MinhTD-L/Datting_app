@@ -42,6 +42,7 @@ namespace Presentation.FormChat
         private bool _incomingStartRequested = false;
         private string _pendingRemoteAnswer;
         private readonly List<string> _pendingIceCandidates = new();
+        private readonly List<string> _pendingLocalIceCandidates = new();
         private bool _hasShownWebRtcError = false;
 
         private const string BaseUrl = "https://litmatchclone-production.up.railway.app";
@@ -320,8 +321,16 @@ namespace Presentation.FormChat
                     var candidate = candEl.GetString();
                     if (string.IsNullOrWhiteSpace(candidate)) return;
 
-                    LogToFile("Sending ICE candidate to backend...");
-                    _ = _chatBll.SendIceCandidateAsync(_userId, candidate);
+                    if (string.IsNullOrWhiteSpace(_messageId))
+                    {
+                        LogToFile("Buffering local ICE candidate because _messageId is null...");
+                        _pendingLocalIceCandidates.Add(candidate);
+                    }
+                    else
+                    {
+                        LogToFile("Sending ICE candidate to backend...");
+                        _ = _chatBll.SendIceCandidateAsync(_userId, _messageId, candidate);
+                    }
                     break;
                 }
                 case "connected":
@@ -771,6 +780,17 @@ namespace Presentation.FormChat
         {
             LogToFile($"SetCallCreated: msgId={msgId}");
             _messageId = msgId;
+
+            if (_pendingLocalIceCandidates.Count > 0)
+            {
+                LogToFile($"Flushing {_pendingLocalIceCandidates.Count} buffered local ICE candidates to backend...");
+                foreach (var c in _pendingLocalIceCandidates)
+                {
+                    _ = _chatBll.SendIceCandidateAsync(_userId, _messageId, c);
+                }
+                _pendingLocalIceCandidates.Clear();
+            }
+
             PostToUi(() =>
             {
                 _lblStatus.Text = "Đang đổ chuông...";

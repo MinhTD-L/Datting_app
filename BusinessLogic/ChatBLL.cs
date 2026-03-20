@@ -226,17 +226,20 @@ namespace BusinessLogic
                 type = "answer",
                 to = toUserId,
                 id = messageId,
+                message_id = messageId,
                 answer = answer
             });
         }
 
-        public Task SendIceCandidateAsync(string toUserId, string candidate)
+        public Task SendIceCandidateAsync(string toUserId, string messageId, string candidate)
         {
             if (string.IsNullOrWhiteSpace(toUserId)) return Task.CompletedTask;
             return _socket.SendMessage(new
             {
-                type = "ice-candidate",
+                type = "ice_candidate",
                 to = toUserId,
+                id = messageId,
+                message_id = messageId,
                 candidate = candidate
             });
         }
@@ -380,6 +383,7 @@ namespace BusinessLogic
                         break;
                     }
                     case "ice-candidate":
+                    case "ice_candidate":
                     {
                         var from = doc.RootElement.TryGetProperty("from", out var elFrom) ? elFrom.GetString() : "";
                         var candidate = doc.RootElement.TryGetProperty("candidate", out var elCandidate) ? elCandidate.GetString() : "";
