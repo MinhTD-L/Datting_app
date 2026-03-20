@@ -25,6 +25,7 @@ namespace Presentation.FormChat
         private string _messageId;
         private string _offer;
 
+        private Label _lblName;
         private Label _lblStatus;
         private Button _btnAccept;
         private Button _btnReject;
@@ -60,7 +61,7 @@ namespace Presentation.FormChat
             _offer = offer;
 
             Text = string.Equals(_callType, "video", StringComparison.OrdinalIgnoreCase) ? "Video Call" : "Voice Call";
-            Size = new Size(360, 520);
+            Size = new Size(400, 640);
             StartPosition = FormStartPosition.CenterScreen;
             BackColor = Color.FromArgb(40, 40, 40);
             FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -86,14 +87,14 @@ namespace Presentation.FormChat
             _pbAvatar = new PictureBox
             {
                 Size = new Size(120, 120),
-                Location = new Point((ClientSize.Width - 120) / 2, 60),
+                Location = new Point((ClientSize.Width - 120) / 2, 80),
                 SizeMode = PictureBoxSizeMode.Zoom,
                 BackColor = Color.FromArgb(60, 60, 60)
             };
             ApplyRound(_pbAvatar);
             Controls.Add(_pbAvatar);
 
-            var lblName = new Label
+            _lblName = new Label
             {
                 Text = _userName,
                 ForeColor = Color.White,
@@ -103,7 +104,7 @@ namespace Presentation.FormChat
                 Width = ClientSize.Width,
                 Location = new Point(0, _pbAvatar.Bottom + 20)
             };
-            Controls.Add(lblName);
+            Controls.Add(_lblName);
 
             _lblStatus = new Label
             {
@@ -113,7 +114,7 @@ namespace Presentation.FormChat
                 AutoSize = false,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Width = ClientSize.Width,
-                Location = new Point(0, lblName.Bottom + 10)
+                Location = new Point(0, _lblName.Bottom + 10)
             };
             Controls.Add(_lblStatus);
 
@@ -124,7 +125,7 @@ namespace Presentation.FormChat
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Size = new Size(100, 44),
-                Location = new Point(ClientSize.Width / 2 - 110, ClientSize.Height - 80),
+                Location = new Point(ClientSize.Width / 2 - 110, ClientSize.Height - 100),
                 Visible = _incoming,
                 Font = new Font("Segoe UI", 10, FontStyle.Bold),
                 Cursor = Cursors.Hand
@@ -140,7 +141,7 @@ namespace Presentation.FormChat
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Size = new Size(100, 44),
-                Location = new Point(ClientSize.Width / 2 + 10, ClientSize.Height - 80),
+                Location = new Point(ClientSize.Width / 2 + 10, ClientSize.Height - 100),
                 Visible = _incoming,
                 Font = new Font("Segoe UI", 10, FontStyle.Bold),
                 Cursor = Cursors.Hand
@@ -156,7 +157,7 @@ namespace Presentation.FormChat
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Size = new Size(140, 44),
-                Location = new Point((ClientSize.Width - 140) / 2, ClientSize.Height - 80),
+                Location = new Point((ClientSize.Width - 140) / 2, ClientSize.Height - 100),
                 Visible = !_incoming,
                 Font = new Font("Segoe UI", 10, FontStyle.Bold),
                 Cursor = Cursors.Hand
@@ -176,6 +177,7 @@ namespace Presentation.FormChat
             // Ensure UI overlays appear above the media surface.
             _webView.SendToBack();
             _pbAvatar.BringToFront();
+            _lblName.BringToFront();
             _lblStatus.BringToFront();
             _btnAccept.BringToFront();
             _btnReject.BringToFront();
@@ -350,6 +352,13 @@ namespace Presentation.FormChat
                         _lblStatus.Text = "00:00";
                         _btnEnd.Enabled = true;
                         _btnEnd.Visible = true;
+
+                        if (string.Equals(_callType, "video", StringComparison.OrdinalIgnoreCase))
+                        {
+                            _pbAvatar.Visible = false;
+                            _lblName.Visible = false;
+                            _lblStatus.Location = new Point(0, 30);
+                        }
                     });
                     break;
                 }
@@ -478,10 +487,11 @@ namespace Presentation.FormChat
     #remoteVideo { width:100%; height:100%; object-fit:cover; background:#000; }
     #remoteAudio { display:none; }
     #localVideo {
-      position:absolute; right:12px; bottom:12px;
-      width:120px; height:80px; object-fit:cover;
+      position:absolute; right:16px; bottom:16px;
+      width:100px; height:140px; object-fit:cover;
       background:#111; border-radius:8px; display:none;
       transform: translateZ(0);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
     }
   </style>
 </head>
