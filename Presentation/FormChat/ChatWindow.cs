@@ -40,6 +40,11 @@ namespace Presentation.FormChat
         private readonly ContextMenuStrip _ownMessageMenu = new ContextMenuStrip();
         private readonly System.Collections.Generic.List<PendingOutgoing> _pendingOutgoing = new();
 
+        private int _currentPage = 0;
+        private bool _isLoadingHistory = false;
+        private bool _hasMoreHistory = true;
+        private const int PageSize = 20;
+
         private const string BaseUrl = "https://litmatchclone-production.up.railway.app";
 
         public ChatWindow(ChatBLL chatBll, string withUserId, string withName, string withAvatar, string sessionId = null)
@@ -72,6 +77,9 @@ namespace Presentation.FormChat
             Controls.Add(_messages);
             Controls.Add(footer);
             Controls.Add(header);
+
+            _messages.Scroll += Messages_Scroll;
+            _messages.MouseWheel += Messages_MouseWheel;
 
             BuildTypingIndicator();
             BuildContextMenus();
@@ -117,6 +125,20 @@ namespace Presentation.FormChat
             };
 
             _ownMessageMenu.Items.Add(miRecall);
+        }
+
+        private void Messages_Scroll(object sender, ScrollEventArgs e) => CheckAndLoadMore();
+        private void Messages_MouseWheel(object sender, MouseEventArgs e) => CheckAndLoadMore();
+
+        private void CheckAndLoadMore()
+        {
+            if (_isLoadingHistory || !_hasMoreHistory) return;
+            if (_messages.VerticalScroll.Value <= 50) // Khi cuộn lên sát lề trên
+            {
+                _isLoadingHistory = true;
+                _currentPage++;
+                _ = _chatBll.LoadHistoryAsync(_withUserId, page: _currentPage, pageSize: PageSize);
+            }
         }
 
         private Panel BuildHeader()
@@ -307,7 +329,11 @@ namespace Presentation.FormChat
                 _bubbleByServerId.Clear();
                 _pendingOutgoing.Clear();
                 _messages.Controls.Add(MakeHint("Đang tải lịch sử..."));
-                await _chatBll.LoadHistoryAsync(_withUserId, page: 0, pageSize: 30);
+                
+                _currentPage = 0;
+                _hasMoreHistory = true;
+                _isLoadingHistory = true;
+                await _chatBll.LoadHistoryAsync(_withUserId, page: _currentPage, pageSize: PageSize);
             }
             catch (Exception ex)
             {
@@ -413,22 +439,45 @@ namespace Presentation.FormChat
 
             BeginInvoke(new Action(() =>
             {
-                _messages.Controls.Clear();
-                if (messages == null || messages.Count == 0)
+                _isLoadingHistory = false;
+                var msgList = messages ?? Array.Empty<ChatMessageDto>();
+                
+                if (msgList.Count < PageSize)
+                    _hasMoreHistory = false;
+
+                if (page == 0)
                 {
-                    _messages.Controls.Add(MakeHint("Chưa có tin nhắn. Gửi tin nhắn đầu tiên nhé."));
-                    if (_pnlTyping != null && !_pnlTyping.IsDisposed)
+                    _messages.Controls.Clear();
+                    if (msgList.Count == 0)
                     {
-                        if (!_messages.Controls.Contains(_pnlTyping)) _messages.Controls.Add(_pnlTyping);
-                        _messages.Controls.SetChildIndex(_pnlTyping, _messages.Controls.Count);
+                        _messages.Controls.Add(MakeHint("Chưa có tin nhắn. Gửi tin nhắn đầu tiên nhé."));
+                        if (_pnlTyping != null && !_pnlTyping.IsDisposed)
+                        {
+                            if (!_messages.Controls.Contains(_pnlTyping)) _messages.Controls.Add(_pnlTyping);
+                            _messages.Controls.SetChildIndex(_pnlTyping, _messages.Controls.Count);
+                        }
+                        return;
                     }
-                    return;
+
+                    foreach (var m in msgList.OrderBy(x => x.SentAt))
+                        AddMessageToUi(m, append: true);
+
+                    ScrollToBottom();
                 }
-
-                foreach (var m in messages.OrderBy(x => x.SentAt))
-                    AddMessageToUi(m, append: true);
-
-                ScrollToBottom();
+                else
+                {
+                    if (msgList.Count == 0) return;
+                    
+                    _messages.SuspendLayout();
+                    Control oldTop = _messages.Controls.Count > 0 ? _messages.Controls[0] : null;
+                    
+                    foreach (var m in msgList.OrderByDescending(x => x.SentAt))
+                        AddMessageToUi(m, append: false);
+                        
+                    _messages.ResumeLayout();
+                    if (oldTop != null)
+                        _messages.ScrollControlIntoView(oldTop);
+                }
             }));
         }
 
@@ -497,7 +546,6 @@ namespace Presentation.FormChat
             wrap.Enabled = false;
             wrap.ForeColor = Color.Gray;
 
-            // find bubble panel (first child) then replace content
             Panel bubble = null;
             foreach (Control c in wrap.Controls)
             {
@@ -511,7 +559,7 @@ namespace Presentation.FormChat
 
             bubble.Controls.Clear();
             bubble.BackColor = Color.FromArgb(245, 246, 250);
-            bubble.Padding = new Padding(10, 8, 10, 8);
+            bubble.Padding = new Padding(6, 4, 6, 4);
 
             var lbl = new Label
             {
@@ -519,6 +567,7 @@ namespace Presentation.FormChat
                 AutoSize = true,
                 Font = new Font("Segoe UI", 9, FontStyle.Italic),
                 ForeColor = Color.Gray,
+                Location = new Point(6, 4)
             };
             bubble.Controls.Add(lbl);
             bubble.Width = Math.Min(520, lbl.PreferredWidth + bubble.Padding.Horizontal);
@@ -527,7 +576,6 @@ namespace Presentation.FormChat
 
         private async Task DebouncedTypingAsync()
         {
-            // throttle typing: only send once per ~900ms
             if (string.IsNullOrWhiteSpace(_input.Text)) return;
             var now = DateTime.UtcNow;
             if ((now - _lastTypingSentAt).TotalMilliseconds < 900)
@@ -545,7 +593,6 @@ namespace Presentation.FormChat
             _input.Focus();
 
             var myTempId = Guid.NewGuid().ToString("N");
-            // optimistic UI (pending)
             var msg = new ChatMessageDto
             {
                 TempId = myTempId,
@@ -596,12 +643,11 @@ namespace Presentation.FormChat
             SetBusy(true);
             try
             {
-                // Upload first, then send URL through websocket content
                 var ext = Path.GetExtension(filePath)?.ToLowerInvariant();
                 var isImage = ext is ".png" or ".jpg" or ".jpeg" or ".webp";
-                var type = isImage ? "image" : "file";
-
-                var url = await _userBll.UploadMediaAsync(filePath, type);
+                var type = isImage ? "image" : "video";
+                var typetoupload ="chat";
+                var url = await _userBll.UploadMediaAsync(filePath, typetoupload);
                 var myTempId = Guid.NewGuid().ToString("N");
                 _pendingOutgoing.Add(new PendingOutgoing
                 {
@@ -614,7 +660,6 @@ namespace Presentation.FormChat
 
                 await _chatBll.SendMediaAsync(_withUserId, type, url);
 
-                // optimistic bubble (preview for image, link for file)
                 var msg = new ChatMessageDto
                 {
                     TempId = myTempId,
@@ -648,11 +693,9 @@ namespace Presentation.FormChat
         {
             if (incoming == null) return false;
 
-            // If server echoes our message, it includes tempId. Use that to reconcile.
             if (!string.IsNullOrWhiteSpace(incoming.Id) && _bubbleByServerId.ContainsKey(incoming.Id))
                 return true;
 
-            // BE generates its own tempId (not the client's), so reconcile for my own echoes by content+time window.
             var me = SessionManager.UserId;
             if (string.Equals(incoming.From, me, StringComparison.Ordinal) &&
                 !string.IsNullOrWhiteSpace(incoming.Id))
@@ -674,7 +717,6 @@ namespace Presentation.FormChat
 
         private PendingOutgoing FindPendingMatch(ChatMessageDto incoming)
         {
-            // match newest pending by type+to+content within 15s
             var now = DateTime.UtcNow;
             for (int i = _pendingOutgoing.Count - 1; i >= 0; i--)
             {
@@ -695,7 +737,6 @@ namespace Presentation.FormChat
             if (!string.IsNullOrWhiteSpace(stableId) && _messageIds.Contains(stableId)) return;
             if (!string.IsNullOrWhiteSpace(stableId)) _messageIds.Add(stableId);
 
-            // remove placeholder hint if present
             if (_messages.Controls.Count == 1 && _messages.Controls[0] is Label l && string.Equals(l.Tag as string, "hint", StringComparison.Ordinal))
                 _messages.Controls.Clear();
 
@@ -742,11 +783,12 @@ namespace Presentation.FormChat
             var bubble = new Panel
             {
                 BackColor = mine ? Color.FromArgb(255, 30, 100) : Color.White,
-                Padding = new Padding(10, 8, 10, 8),
+                Padding = new Padding(6, 4, 6, 4),
                 MaximumSize = new Size(520, 0)
             };
             ApplyBubble(bubble);
 
+            bool isImage = string.Equals(m.Type, "image", StringComparison.OrdinalIgnoreCase);
             Control contentCtrl;
             if (string.Equals(m.Type, "deleted", StringComparison.OrdinalIgnoreCase))
             {
@@ -757,7 +799,7 @@ namespace Presentation.FormChat
                     MaximumSize = new Size(480, 0),
                     Font = new Font("Segoe UI", 9, FontStyle.Italic),
                     ForeColor = Color.Gray,
-                    Location = new Point(10, 8)
+                    Location = new Point(6, 4)
                 };
                 contentCtrl = text;
                 bubble.BackColor = Color.FromArgb(245, 246, 250);
@@ -769,10 +811,12 @@ namespace Presentation.FormChat
                     SizeMode = PictureBoxSizeMode.Zoom,
                     Width = 280,
                     Height = 180,
-                    BackColor = Color.FromArgb(18, 18, 18),
-                    Location = new Point(10, 8)
+                    BackColor = Color.Transparent,
+                    Location = new Point(0, 0)
                 };
                 contentCtrl = pb;
+                bubble.BackColor = Color.Transparent;
+                bubble.Padding = new Padding(0);
                 _ = Task.Run(async () =>
                 {
                     var img = await TryLoadImageAsync(m.Content);
@@ -781,6 +825,39 @@ namespace Presentation.FormChat
                         try { pb.Invoke(new Action(() => pb.Image = img)); } catch { }
                     }
                 });
+            }
+            else if (string.Equals(m.Type, "call", StringComparison.OrdinalIgnoreCase))
+            {
+                var isVideo = string.Equals(m.Content, "video", StringComparison.OrdinalIgnoreCase);
+                var callPanel = new Panel
+                {
+                    BackColor = Color.Transparent,
+                    Location = new Point(6, 4)
+                };
+
+                var iconBox = new Label
+                {
+                    Text = isVideo ? "📹" : "📞",
+                    Font = new Font("Segoe UI Emoji", 16),
+                    AutoSize = true,
+                    ForeColor = mine ? Color.White : Color.FromArgb(30, 30, 30),
+                    Location = new Point(0, 0)
+                };
+
+                var titleLbl = new Label
+                {
+                    Text = isVideo ? "Cuộc gọi video" : "Cuộc gọi thoại",
+                    Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                    AutoSize = true,
+                    ForeColor = mine ? Color.White : Color.FromArgb(30, 30, 30)
+                };
+
+                callPanel.Controls.Add(iconBox);
+                callPanel.Controls.Add(titleLbl);
+                
+                titleLbl.Location = new Point(iconBox.PreferredWidth + 8, Math.Max(0, (iconBox.PreferredHeight - titleLbl.PreferredHeight) / 2));
+                callPanel.Size = new Size(titleLbl.Left + titleLbl.PreferredWidth + 4, Math.Max(iconBox.PreferredHeight, titleLbl.PreferredHeight));
+                contentCtrl = callPanel;
             }
             else
             {
@@ -791,7 +868,7 @@ namespace Presentation.FormChat
                     MaximumSize = new Size(480, 0),
                     Font = new Font("Segoe UI", 10),
                     ForeColor = mine ? Color.White : Color.FromArgb(30, 30, 30),
-                    Location = new Point(10, 8)
+                    Location = new Point(6, 4)
                 };
                 contentCtrl = text;
             }
@@ -801,14 +878,15 @@ namespace Presentation.FormChat
                 Text = (m.SentAt == default ? DateTime.Now : m.SentAt.ToLocalTime()).ToString("HH:mm"),
                 AutoSize = true,
                 Font = new Font("Segoe UI", 7),
-                ForeColor = mine ? Color.FromArgb(255, 230, 240) : Color.Gray,
+                ForeColor = (mine && !isImage) ? Color.FromArgb(255, 230, 240) : Color.Gray,
                 Margin = new Padding(0, 4, 0, 0)
             };
 
             bubble.Controls.Add(contentCtrl);
             bubble.Controls.Add(time);
 
-            bubble.Width = Math.Min(520, Math.Max(70, contentCtrl.PreferredSize.Width + bubble.Padding.Horizontal));
+            var contentW = contentCtrl is PictureBox || contentCtrl is Panel ? contentCtrl.Width : contentCtrl.PreferredSize.Width;
+            bubble.Width = Math.Min(520, Math.Max(70, contentW + bubble.Padding.Horizontal));
             time.Top = contentCtrl.Bottom + 4;
             time.Left = mine ? Math.Max(0, bubble.Width - bubble.Padding.Right - time.PreferredWidth) : Math.Max(0, bubble.Padding.Left);
             bubble.Height = time.Bottom + bubble.Padding.Bottom;
@@ -883,8 +961,13 @@ namespace Presentation.FormChat
         private void ScrollToBottom()
         {
             if (_messages.Controls.Count == 0) return;
-            var last = _messages.Controls[_messages.Controls.Count - 1];
-            _messages.ScrollControlIntoView(last);
+            
+            BeginInvoke(new Action(() =>
+            {
+                if (_messages.IsDisposed || _messages.Controls.Count == 0) return;
+                _messages.PerformLayout();
+                _messages.AutoScrollPosition = new Point(0, _messages.DisplayRectangle.Height);
+            }));
         }
 
         private static Control MakeHint(string text)
@@ -919,7 +1002,7 @@ namespace Presentation.FormChat
             void Update()
             {
                 var rect = new Rectangle(0, 0, p.Width, p.Height);
-                var r = 14;
+                var r = 8;
                 using var path = new GraphicsPath();
                 path.AddArc(rect.Left, rect.Top, r * 2, r * 2, 180, 90);
                 path.AddArc(rect.Right - r * 2, rect.Top, r * 2, r * 2, 270, 90);
@@ -963,7 +1046,7 @@ namespace Presentation.FormChat
             var bubble = new Panel
             {
                 BackColor = Color.White,
-                Padding = new Padding(10, 8, 10, 8),
+                Padding = new Padding(6, 4, 6, 4),
                 Location = new Point(avatarBox.Right + 8, 0)
             };
             ApplyBubble(bubble);
@@ -974,7 +1057,7 @@ namespace Presentation.FormChat
                 AutoSize = true,
                 Font = new Font("Segoe UI", 9, FontStyle.Italic),
                 ForeColor = Color.Gray,
-                Location = new Point(10, 8)
+                Location = new Point(6, 4)
             };
             bubble.Controls.Add(lbl);
 

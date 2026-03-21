@@ -23,6 +23,8 @@ namespace Presentation.FormFriend
 
         private readonly Label _lblStatus;
 
+        private const string BaseUrl = "https://litmatchclone-production.up.railway.app";
+
         public FriendsForm(FriendBLL friendBll)
         {
             _friendBll = friendBll ?? throw new ArgumentNullException(nameof(friendBll));
@@ -176,29 +178,52 @@ namespace Presentation.FormFriend
             var card = new Panel
             {
                 Width = 680,
-                Height = 64,
+                Height = 76,
                 BackColor = Color.White,
                 Margin = new Padding(0, 0, 0, 10),
-                Padding = new Padding(12)
+                Padding = new Padding(12),
+                Cursor = Cursors.Hand
             };
 
-            var lbl = new Label
+            var avatar = new PictureBox
             {
-                Text = $"{f?.Username ?? "Unknown"}\n{f?.UserId}",
-                AutoSize = false,
-                Dock = DockStyle.Fill,
-                Font = new Font("Segoe UI", 9),
-                ForeColor = Color.FromArgb(30, 30, 30)
+                Size = new Size(48, 48),
+                Location = new Point(12, 14),
+                BackColor = Color.FromArgb(238, 238, 238),
+                SizeMode = PictureBoxSizeMode.Zoom
+            };
+            ApplyRound(avatar);
+
+            if (!string.IsNullOrWhiteSpace(f?.AvatarUrl))
+            {
+                _ = Task.Run(async () =>
+                {
+                    var img = await TryLoadImageAsync(f.AvatarUrl);
+                    if (img != null && !avatar.IsDisposed)
+                    {
+                        try { avatar.Invoke(new Action(() => avatar.Image = img)); } catch { }
+                    }
+                });
+            }
+
+            var lblName = new Label
+            {
+                Text = f?.Username ?? "Unknown",
+                AutoSize = true,
+                Font = new Font("Segoe UI", 11, FontStyle.Bold),
+                ForeColor = Color.FromArgb(30, 30, 30),
+                Location = new Point(avatar.Right + 12, 26)
             };
 
             var btnMsg = new Button
             {
-                Text = "💬 Nhắn",
-                Width = 96,
-                Height = 30,
+                Text = "💬 Nhắn tin",
+                Width = 110,
+                Height = 36,
                 FlatStyle = FlatStyle.Flat,
                 BackColor = Color.FromArgb(255, 30, 100),
                 ForeColor = Color.White,
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
             btnMsg.FlatAppearance.BorderSize = 0;
@@ -207,7 +232,6 @@ namespace Presentation.FormFriend
             {
                 btnMsg.Left = card.ClientSize.Width - card.Padding.Right - btnMsg.Width;
                 btnMsg.Top = (card.ClientSize.Height - btnMsg.Height) / 2;
-                lbl.Width = Math.Max(240, btnMsg.Left - 12 - lbl.Left);
             }
 
             card.SizeChanged += (_, __) => LayoutRight();
@@ -230,7 +254,8 @@ namespace Presentation.FormFriend
                 }
             };
 
-            card.Controls.Add(lbl);
+            card.Controls.Add(avatar);
+            card.Controls.Add(lblName);
             card.Controls.Add(btnMsg);
             LayoutRight();
             card.Paint += (_, e) =>
@@ -241,6 +266,10 @@ namespace Presentation.FormFriend
                 using var pen = new Pen(Color.FromArgb(235, 235, 235), 1);
                 e.Graphics.DrawRectangle(pen, rect);
             };
+
+            avatar.Click += (_, __) => btnMsg.PerformClick();
+            lblName.Click += (_, __) => btnMsg.PerformClick();
+            card.Click += (_, __) => btnMsg.PerformClick();
 
             return card;
         }
@@ -369,6 +398,39 @@ namespace Presentation.FormFriend
             _lblStatus.Text = status ?? "";
             UseWaitCursor = busy;
         }
+
+        private static void ApplyRound(Control c)
+        {
+            void Update()
+            {
+                var d = Math.Min(c.Width, c.Height);
+                var rect = new Rectangle(0, 0, d, d);
+                using var path = new GraphicsPath();
+                path.AddEllipse(rect);
+                c.Region = new Region(path);
+            }
+            c.SizeChanged += (_, __) => Update();
+            Update();
+        }
+
+        private static async Task<Image> TryLoadImageAsync(string relativeOrFullUrl)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(relativeOrFullUrl)) return null;
+                var fullUrl = relativeOrFullUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase)
+                    ? relativeOrFullUrl
+                    : $"{BaseUrl}{relativeOrFullUrl}";
+
+                using var http = new System.Net.Http.HttpClient();
+                var bytes = await http.GetByteArrayAsync(fullUrl);
+                using var ms = new System.IO.MemoryStream(bytes);
+                return Image.FromStream(ms);
+            }
+            catch
+            {
+                return null;
+            }
+        }
     }
 }
-

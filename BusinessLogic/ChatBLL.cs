@@ -19,11 +19,9 @@ namespace BusinessLogic
         public event Action Disconnected;
         public event Action<string> Error;
 
-        // Matchmaking (realtime)
         public event Action WaitingReceived;
-        public event Action<string, string> MatchedReceived; // withUserId, sessionId
-        // withUserId + sessionId are optional depending on backend payload.
-        public event Action<string, string> LeftQueueReceived; // withUserId, sessionId
+        public event Action<string, string> MatchedReceived; 
+        public event Action<string, string> LeftQueueReceived; 
 
         public event Action<IReadOnlyList<ContactDto>> ContactsUpdated;
         public event Action<string, IReadOnlyList<ChatMessageDto>, int> HistoryLoaded; 
@@ -39,6 +37,8 @@ namespace BusinessLogic
         public event Action<string, string, string> CallAnswerReceived; 
         public event Action<string, string> IceCandidateReceived; 
         public event Action<string, int> CallEnded; 
+        public event Action<ChatMessageDto> NotificationReceived;
+        public event Action<IReadOnlyList<ChatMessageDto>, int> NotificationsLoaded;
 
         public ChatBLL(ChatSocketDAL socket)
         {
@@ -274,6 +274,28 @@ namespace BusinessLogic
             });
         }
 
+        public Task SendNotificationAsync(string toUserId, string content)
+        {
+            if (string.IsNullOrWhiteSpace(toUserId)) return Task.CompletedTask;
+
+            return _socket.SendMessage(new WSMessageDto
+            {
+                Type = "notification",
+                To = toUserId,
+                Content = content
+            });
+        }
+
+        public Task LoadNotificationsAsync(int page = 0, int pageSize = 20)
+        {
+            return _socket.SendMessage(new WSMessageDto
+            {
+                Type = "load_notification",
+                Page = page,
+                PageSize = pageSize
+            });
+        }
+
         private void LogToFile(string message)
         {
             try
@@ -453,6 +475,32 @@ namespace BusinessLogic
                         var duration = doc.RootElement.TryGetProperty("duration", out var elDur) && elDur.TryGetInt32(out var d) ? d : 0;
                         if (!string.IsNullOrWhiteSpace(msgId))
                             CallEnded?.Invoke(msgId, duration);
+                        break;
+                    }
+                    case "notification":
+                    {
+                        var m = JsonSerializer.Deserialize<ChatMessageDto>(json, _jsonOptions);
+                        if (m != null)
+                        {
+                            if (m.SentAt == default && m.Timestamp != default)
+                                m.SentAt = m.Timestamp;
+                            NotificationReceived?.Invoke(m);
+                        }
+                        break;
+                    }
+                    case "notifications":
+                    {
+                        var page = doc.RootElement.TryGetProperty("page", out var elPage) && elPage.TryGetInt32(out var p) ? p : 0;
+                        var list = new List<ChatMessageDto>();
+                        if (doc.RootElement.TryGetProperty("notifications", out var elList) && elList.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (var item in elList.EnumerateArray())
+                            {
+                                var m = JsonSerializer.Deserialize<ChatMessageDto>(item.GetRawText(), _jsonOptions);
+                                if (m != null) list.Add(m);
+                            }
+                        }
+                        NotificationsLoaded?.Invoke(list, page);
                         break;
                     }
                     default:
