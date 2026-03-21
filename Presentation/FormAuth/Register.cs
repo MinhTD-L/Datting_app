@@ -1,13 +1,19 @@
-﻿using System;
+﻿﻿using System;
 using System.Drawing;
+using System.Threading.Tasks;
 using System.Windows.Forms;
+using BusinessLogic;
+using DataTransferObject;
 
 namespace Presentation
 {
     public partial class Register : Form
     {
+        private readonly UserBLL _userBll;
+
         public Register()
         {
+            _userBll = BusinessLogic.AppServices.UserBll;
             InitializeComponent();
             LoadManualLayout();
             btnRegister.Enabled = false;
@@ -124,7 +130,7 @@ namespace Presentation
         }
 
         // CÁC SỰ KIỆN
-        private void btnRegister_Click(object sender, EventArgs e)
+        private async void btnRegister_Click(object sender, EventArgs e)
         {
             // 1. Kiểm tra Checkbox điều khoản
             if (!chkTerms.Checked)
@@ -148,15 +154,33 @@ namespace Presentation
                 return;
             }
 
-            // 4. Kiểm tra mật khẩu khớp nhau
             if (txtPass.Text != txtConfirmPass.Text)
             {
                 MessageBox.Show("Mật khẩu xác nhận không khớp!", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
-            // 5. Mở Popup Verify
-            // Truyền Email sang Form Verify để hiển thị
+            try
+            {
+                btnRegister.Enabled = false;
+                var registerDto = new RegisterInput
+                {
+                    UserName = txtName.Text.Trim(),
+                    Email = txtEmail.Text.Trim(),
+                    Password = txtPass.Text
+                };
+
+                await _userBll.RegisterAsync(registerDto);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Đăng ký thất bại: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                btnRegister.Enabled = true;
+                return;
+            }
+
+            btnRegister.Enabled = true;
+
             using (FormAuth.Verify frmVerify = new FormAuth.Verify(txtEmail.Text))
             {
                 // Hiển thị dạng Dialog để bắt người dùng thao tác xong mới quay lại đây

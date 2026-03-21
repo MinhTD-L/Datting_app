@@ -1,4 +1,4 @@
-﻿using System;
+﻿﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -7,18 +7,21 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.ListView;
+using BusinessLogic;
+using DataTransferObject;
 
 namespace Presentation.FormAuth
 {
     public partial class Verify : Form
     {
         private string _targetEmail;
-        private string _correctCode = "123456"; // Mã mẫu
+        private readonly UserBLL _userBll;
+
         public Verify(string email)
         {
             InitializeComponent();
             _targetEmail = email;
+            _userBll = BusinessLogic.AppServices.UserBll;
             lblEmail.Text = _targetEmail; // Hiển thị email người dùng vừa nhập
         }
 
@@ -27,16 +30,33 @@ namespace Presentation.FormAuth
             // gửi lại code xác thực
         }
 
-        private void btnVerify_Click(object sender, EventArgs e)
+        private async void btnVerify_Click(object sender, EventArgs e)
         {
-            if (txtVerifyCode.Text == _correctCode)
+            var code = txtVerifyCode.Text?.Trim();
+            if (string.IsNullOrWhiteSpace(code))
             {
-                this.DialogResult = DialogResult.OK; // Trả về kết quả Thành công
+                MessageBox.Show("Vui lòng nhập mã xác thực!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            try
+            {
+                btnVerify.Enabled = false;
+                var dto = new verifyEmailDTO
+                {
+                    Email = _targetEmail,
+                    Code = code
+                };
+
+                await _userBll.VerifyEmailAsync(dto);
+                
+                this.DialogResult = DialogResult.OK; 
                 this.Close();
             }
-            else
+            catch (Exception ex)
             {
-                MessageBox.Show("Mã xác thực không đúng!", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Xác thực thất bại: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                btnVerify.Enabled = true;
             }
         }
     }

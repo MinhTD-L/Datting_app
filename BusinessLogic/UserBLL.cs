@@ -20,6 +20,18 @@ namespace BusinessLogic
             return _userDal.Login(dto);
         }
 
+        public Task<APIresponseDTO> RegisterAsync(RegisterInput dto)
+        {
+            if (dto == null) throw new ArgumentNullException(nameof(dto));
+            return _userDal.Register(dto);
+        }
+
+        public Task<APIresponseDTO> VerifyEmailAsync(verifyEmailDTO dto)
+        {
+            if (dto == null) throw new ArgumentNullException(nameof(dto));
+            return _userDal.VerifyEmail(dto);
+        }
+
         public async Task<UserProfileDTO> GetProfileAsync()
         {
             return await _userDal.GetProfile();
