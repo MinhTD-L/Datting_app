@@ -29,7 +29,6 @@ namespace Presentation
         private Panel _messagesDot;
         private bool _hasUnreadMessages;
         private Panel _notificationDot;
-        private Button _btnNotification;
         private bool _hasUnreadNotifications;
         private const int FeedMaxWidth = 680;
 
@@ -65,7 +64,7 @@ namespace Presentation
         private void InitUi()
         {
             this.DoubleBuffered = true;
-            
+
             typeof(Control).InvokeMember("DoubleBuffered",
                 BindingFlags.SetProperty | BindingFlags.Instance | BindingFlags.NonPublic,
                 null, PostFeed, new object[] { true });
@@ -81,10 +80,27 @@ namespace Presentation
             PostFeed.SizeChanged += (_, __) => CenterFeedCards();
 
             BuildFeedLoadingOverlay();
-            CustomizeUI();
             this.Load += Dashboard_Load;
 
-            btnCreatePost.Click += async (_, __) =>
+            pnlHeader.SizeChanged += (_, __) =>
+            {
+                lblLogo.Left = (pnlHeader.ClientSize.Width - lblLogo.Width) / 2;
+                lblLogo.Top = (pnlHeader.ClientSize.Height - lblLogo.Height) / 2;
+            };
+            lblLogo.Left = (pnlHeader.ClientSize.Width - lblLogo.Width) / 2;
+            lblLogo.Top = (pnlHeader.ClientSize.Height - lblLogo.Height) / 2;
+
+            pnlBottomNav.SizeChanged += (_, __) =>
+            {
+                int totalWidth = btnMatch.Width + btnFriend.Width + btnMessages.Width + btnProfile.Width + 60;
+                int startX = (pnlBottomNav.ClientSize.Width - totalWidth) / 2;
+                btnMatch.Left = startX;
+                btnFriend.Left = btnMatch.Right + 20;
+                btnMessages.Left = btnFriend.Right + 20;
+                btnProfile.Left = btnMessages.Right + 20;
+            };
+
+            btnFakeInputText.Click += async (_, __) =>
             {
                 using var dlg = new CreatePostForm(_postBll, _userBll);
                 if (dlg.ShowDialog(this) == DialogResult.OK)
@@ -110,12 +126,25 @@ namespace Presentation
             BuildNotificationDot();
             WireNotificationBadge();
 
+            btnNotification.Click += (_, __) =>
+            {
+                ClearNotificationDot();
+                using var dlg = new NotificationForm(_chatBll);
+                dlg.ShowDialog(this);
+            };
+
+            ApplyRoundedAvatar(picUserAvatar);
+            pnlCreatePost.SizeChanged += (_, __) => CenterCreatePost();
+            CenterCreatePost();
+
             btnMessages.Click += (_, __) =>
             {
                 ClearMessagesDot();
                 using var dlg = new ConversationsForm(_chatBll);
                 dlg.ShowDialog(this);
             };
+
+            _ = LoadCurrentUserAvatarAsync();
         }
 
         private void BuildMessagesDot()
@@ -163,7 +192,7 @@ namespace Presentation
             {
                 if (m == null) return;
                 if (string.Equals(m.From, SessionManager.UserId, StringComparison.Ordinal))
-                    return; 
+                    return;
 
                 if (InvokeRequired)
                 {
@@ -189,100 +218,50 @@ namespace Presentation
             SetMessagesDot(false);
         }
 
-        private void CustomizeUI()
+        private void CenterCreatePost()
         {
-            // 1. Bỏ panel suggest
-            var pnlSuggest = this.Controls.Find("pnlSuggest", true).Length > 0 ? this.Controls.Find("pnlSuggest", true)[0] : null;
-            if (pnlSuggest == null) pnlSuggest = this.Controls.Find("panelSuggest", true).Length > 0 ? this.Controls.Find("panelSuggest", true)[0] : null;
-            if (pnlSuggest == null) pnlSuggest = this.Controls.Find("pnlRight", true).Length > 0 ? this.Controls.Find("pnlRight", true)[0] : null;
-            
-            if (pnlSuggest != null)
+            if (pnlCreatePost == null || pnlCreatePost.IsDisposed) return;
+            var maxWidth = Math.Min(FeedMaxWidth, Math.Max(360, pnlCreatePost.ClientSize.Width - 40));
+            var left = Math.Max(10, (pnlCreatePost.ClientSize.Width - maxWidth) / 2);
+
+            picUserAvatar.Left = left;
+            btnFakeInputText.Left = picUserAvatar.Right + 15;
+            btnFakeInputText.Width = maxWidth - picUserAvatar.Width - 15;
+
+            var rect = new Rectangle(0, 0, btnFakeInputText.Width, btnFakeInputText.Height);
+            using var path = new GraphicsPath();
+            var r = 24;
+            path.AddArc(rect.X, rect.Y, r, r, 180, 90);
+            path.AddArc(rect.Right - r, rect.Y, r, r, 270, 90);
+            path.AddArc(rect.Right - r, rect.Bottom - r, r, r, 0, 90);
+            path.AddArc(rect.X, rect.Bottom - r, r, r, 90, 90);
+            path.CloseFigure();
+            btnFakeInputText.Region = new Region(path);
+        }
+
+        private async Task LoadCurrentUserAvatarAsync()
+        {
+            try
             {
-                pnlSuggest.Visible = false;
-                pnlSuggest.Parent?.Controls.Remove(pnlSuggest);
-                pnlSuggest.Dispose();
-            }
+                var profile = await _userBll.GetProfileAsync();
+                var displayName = (profile?.FullName ?? profile?.UserName ?? SessionManager.Username ?? "Bạn").Trim();
+                btnFakeInputText.Text = $"{displayName} ơi, bạn đang nghĩ gì thế?";
 
-            // 2. Cho logo vào giữa
-            var pbLogo = this.Controls.Find("pbLogo", true).Length > 0 ? this.Controls.Find("pbLogo", true)[0] : null;
-            if (pbLogo == null) pbLogo = this.Controls.Find("picLogo", true).Length > 0 ? this.Controls.Find("picLogo", true)[0] : null;
-            if (pbLogo == null) pbLogo = this.Controls.Find("logo", true).Length > 0 ? this.Controls.Find("logo", true)[0] : null;
-
-            var pnlHeader = this.Controls.Find("pnlHeader", true).Length > 0 ? this.Controls.Find("pnlHeader", true)[0] : null;
-            if (pnlHeader == null && pbLogo != null) pnlHeader = pbLogo.Parent;
-
-            if (pbLogo != null && pnlHeader != null)
-            {
-                pbLogo.Anchor = AnchorStyles.None;
-                pbLogo.Left = (pnlHeader.ClientSize.Width - pbLogo.Width) / 2;
-                pnlHeader.SizeChanged += (s, e) =>
+                if (profile != null && !string.IsNullOrWhiteSpace(profile.AvatarUrl))
                 {
-                    pbLogo.Left = (pnlHeader.ClientSize.Width - pbLogo.Width) / 2;
-                };
+                    var img = await LoadImageFromUrl(profile.AvatarUrl);
+                    if (img != null && !picUserAvatar.IsDisposed)
+                        picUserAvatar.Image = img;
+                }
             }
-
-            // 3. Thay thế thanh tìm kiếm bằng Nút Thông báo (Biểu tượng chuông)
-            var txtSearch = this.Controls.Find("txtSearch", true).Length > 0 ? this.Controls.Find("txtSearch", true)[0] : null;
-            var pnlSearch = this.Controls.Find("pnlSearch", true).Length > 0 ? this.Controls.Find("pnlSearch", true)[0] : null;
-            var btnSearch = this.Controls.Find("btnSearch", true).Length > 0 ? this.Controls.Find("btnSearch", true)[0] : null;
-
-            Control searchElement = pnlSearch ?? txtSearch;
-
-            _btnNotification = new Button
+            catch
             {
-                Text = "🔔",
-                Font = new Font("Segoe UI Emoji", 14),
-                FlatStyle = FlatStyle.Flat,
-                Size = new Size(40, 40),
-                Cursor = Cursors.Hand,
-                BackColor = Color.Transparent,
-                ForeColor = Color.FromArgb(70, 70, 70)
-            };
-            _btnNotification.FlatAppearance.BorderSize = 0;
-            _btnNotification.FlatAppearance.MouseOverBackColor = Color.FromArgb(240, 240, 240);
-            _btnNotification.FlatAppearance.MouseDownBackColor = Color.FromArgb(232, 232, 232);
-
-            _btnNotification.Click += (_, __) =>
-            {
-                ClearNotificationDot();
-                using var dlg = new NotificationForm(_chatBll);
-                dlg.ShowDialog(this);
-            };
-
-            if (searchElement != null)
-            {
-                _btnNotification.Location = searchElement.Location;
-                searchElement.Parent?.Controls.Add(_btnNotification);
-                _btnNotification.BringToFront();
-
-                searchElement.Visible = false;
-                searchElement.Parent?.Controls.Remove(searchElement);
-                searchElement.Dispose();
-            }
-            else if (pnlHeader != null)
-            {
-                _btnNotification.Location = new Point(20, (pnlHeader.Height - _btnNotification.Height) / 2);
-                pnlHeader.Controls.Add(_btnNotification);
-                _btnNotification.BringToFront();
-            }
-            else
-            {
-                _btnNotification.Location = new Point(20, 20);
-                this.Controls.Add(_btnNotification);
-                _btnNotification.BringToFront();
-            }
-
-            if (btnSearch != null)
-            {
-                btnSearch.Visible = false;
-                btnSearch.Parent?.Controls.Remove(btnSearch);
-                btnSearch.Dispose();
             }
         }
 
         private void BuildNotificationDot()
         {
-            if (_btnNotification == null) return;
+            if (btnNotification == null) return;
 
             _notificationDot = new Panel
             {
@@ -302,15 +281,15 @@ namespace Presentation
             _notificationDot.SizeChanged += (_, __) => ApplyRound(_notificationDot);
             ApplyRound(_notificationDot);
 
-            _btnNotification.Controls.Add(_notificationDot);
+            btnNotification.Controls.Add(_notificationDot);
             _notificationDot.BringToFront();
 
             void Reposition()
             {
-                _notificationDot.Left = _btnNotification.Width - _notificationDot.Width - 4;
+                _notificationDot.Left = btnNotification.Width - _notificationDot.Width - 4;
                 _notificationDot.Top = 4;
             }
-            _btnNotification.SizeChanged += (_, __) => Reposition();
+            btnNotification.SizeChanged += (_, __) => Reposition();
             Reposition();
         }
 
@@ -811,7 +790,6 @@ namespace Presentation
 
             _ = LoadCardAssetsAsync();
 
-            // Friend button visibility + action
             var authorId = post?.User?.UserID;
             var meId = SessionManager.UserId;
             var canShowAddFriend =
@@ -1188,6 +1166,11 @@ namespace Presentation
         private void btnHome_Click(object sender, EventArgs e)
         {
             LoadPosts();
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+            Application.Exit();
         }
     }
 }
