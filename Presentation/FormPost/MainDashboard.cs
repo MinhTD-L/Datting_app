@@ -589,6 +589,34 @@ namespace Presentation
                 Location = new Point(picAvatar.Right + 10, 12)
             };
 
+            var btnMore = new Button
+            {
+                Text = "⋮",
+                AutoSize = true,
+                Height = 26,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.Transparent,
+                ForeColor = Color.Gray,
+                Cursor = Cursors.Hand,
+                Font = new Font("Segoe UI", 12, FontStyle.Bold),
+                Tag = "no_open_detail"
+            };
+            btnMore.FlatAppearance.BorderSize = 0;
+
+            var cmOptions = new ContextMenuStrip();
+            cmOptions.Items.Add("Báo cáo người dùng", null, (_, __) => {
+                using var frm = new Presentation.FormReport.SubmitReportForm("user", post.User?.UserID);
+                frm.ShowDialog(this);
+            });
+            cmOptions.Items.Add("Báo cáo bài viết", null, (_, __) => {
+                using var frm = new Presentation.FormReport.SubmitReportForm("post", post.Id);
+                frm.ShowDialog(this);
+            });
+
+            btnMore.Click += (s, e) => {
+                cmOptions.Show(btnMore, new Point(0, btnMore.Height));
+            };
+
             var btnAddFriend = new Button
             {
                 Text = "Kết bạn",
@@ -687,6 +715,7 @@ namespace Presentation
 
             card.Controls.Add(picAvatar);
             card.Controls.Add(lblUsername);
+            card.Controls.Add(btnMore);
             card.Controls.Add(btnAddFriend);
             card.Controls.Add(lblTime);
             card.Controls.Add(lblContent);
@@ -697,11 +726,13 @@ namespace Presentation
 
             void LayoutHeaderRow()
             {
-                // position add-friend button next to username, clamp within card
+                btnMore.Left = card.ClientSize.Width - card.Padding.Right - btnMore.Width;
+                btnMore.Top = 12;
+
                 btnAddFriend.Left = lblUsername.Right + 10;
                 btnAddFriend.Top = lblUsername.Top - 1;
 
-                var maxLeft = card.ClientSize.Width - card.Padding.Right - btnAddFriend.Width;
+                var maxLeft = btnMore.Left - btnAddFriend.Width - 10;
                 if (btnAddFriend.Left > maxLeft)
                     btnAddFriend.Left = maxLeft;
             }

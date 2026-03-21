@@ -40,9 +40,20 @@ namespace Presentation
                 {
                     // ignore: chat can reconnect later when opening messages
                 }
-                MainDashboard main = new MainDashboard();
-                main.Show();
-                this.Hide();
+                
+                // Kiểm tra Role của User
+                if (!string.IsNullOrEmpty(result.User.Role) && result.User.Role.ToLower() == "admin")
+                {
+                    Presentation.FormAdmin.AdminReportForm adminForm = new Presentation.FormAdmin.AdminReportForm();
+                    adminForm.Show();
+                    this.Hide();
+                }
+                else
+                {
+                    MainDashboard main = new MainDashboard();
+                    main.Show();
+                    this.Hide();
+                }
             }
             else if (result.Status != "success")
             {

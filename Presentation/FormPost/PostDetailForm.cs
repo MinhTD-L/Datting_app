@@ -216,6 +216,34 @@ namespace Presentation
                 Location = new Point(picAvatar.Right + 12, 40)
             };
 
+            var btnMore = new Button
+            {
+                Text = "⋮",
+                AutoSize = true,
+                Height = 26,
+                FlatStyle = FlatStyle.Flat,
+                BackColor = Color.Transparent,
+                ForeColor = Color.Gray,
+                Cursor = Cursors.Hand,
+                Font = new Font("Segoe UI", 12, FontStyle.Bold),
+                Location = new Point(card.Width - 40, 14)
+            };
+            btnMore.FlatAppearance.BorderSize = 0;
+
+            var cmOptions = new ContextMenuStrip();
+            cmOptions.Items.Add("Báo cáo người dùng", null, (_, __) => {
+                using var frm = new Presentation.FormReport.SubmitReportForm("user", post.User?.UserID);
+                frm.ShowDialog(this);
+            });
+            cmOptions.Items.Add("Báo cáo bài viết", null, (_, __) => {
+                using var frm = new Presentation.FormReport.SubmitReportForm("post", post.Id);
+                frm.ShowDialog(this);
+            });
+
+            btnMore.Click += (s, e) => {
+                cmOptions.Show(btnMore, new Point(0, btnMore.Height));
+            };
+
             var lblContent = new Label
             {
                 Text = post.Content ?? "",
@@ -388,6 +416,7 @@ namespace Presentation
             card.Controls.Add(picAvatar);
             card.Controls.Add(lblUsername);
             card.Controls.Add(lblTime);
+            card.Controls.Add(btnMore);
             card.Controls.Add(lblContent);
             card.Controls.Add(mediaHost);
             card.Controls.Add(lblStats);
