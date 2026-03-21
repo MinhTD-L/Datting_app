@@ -24,6 +24,9 @@ namespace Presentation
         private Panel _loadingOverlay;
         private string _replyParentId;
         private string _replyToUsername;
+        private readonly ChatBLL _chatBll;
+        private string _postAuthorId;
+        private string _replyToUserId;
 
         private const string BaseUrl = "https://litmatchclone-production.up.railway.app";
 
@@ -32,6 +35,7 @@ namespace Presentation
             _postBll = postBll ?? throw new ArgumentNullException(nameof(postBll));
             _postId = postId ?? throw new ArgumentNullException(nameof(postId));
             _openComments = openComments;
+            _chatBll = BusinessLogic.AppServices.ChatBll;
 
             Text = "Post detail";
             StartPosition = FormStartPosition.CenterParent;
@@ -157,6 +161,7 @@ namespace Presentation
 
         private void RenderPost(PostFeedDTO post)
         {
+            _postAuthorId = post.User?.UserID;
             for (var i = _root.Controls.Count - 1; i >= 0; i--)
             {
                 var c = _root.Controls[i];
@@ -339,6 +344,11 @@ namespace Presentation
                     if (post.IsLiked)
                     {
                         await _postBll.LikeAsync(post.Id);
+                        if (!string.IsNullOrWhiteSpace(_postAuthorId) && _postAuthorId != SessionManager.UserId)
+                        {
+                            var me = SessionManager.Username ?? "Ai đó";
+                            await _chatBll.SendNotificationAsync(_postAuthorId, $"{me} đã thích bài viết của bạn.");
+                        }
                     }
                     else
                     {
@@ -541,12 +551,27 @@ namespace Presentation
                     _btnSendComment.Enabled = false;
 
                 if (!string.IsNullOrWhiteSpace(_replyParentId))
+                {
                     await _postBll.ReplyCommentAsync(_postId, _replyParentId, content);
+                    if (!string.IsNullOrWhiteSpace(_replyToUserId) && _replyToUserId != SessionManager.UserId)
+                    {
+                        var me = SessionManager.Username ?? "Ai đó";
+                        await _chatBll.SendNotificationAsync(_replyToUserId, $"{me} đã trả lời bình luận của bạn.");
+                    }
+                }
                 else
+                {
                     await _postBll.CommentAsync(_postId, content);
+                    if (!string.IsNullOrWhiteSpace(_postAuthorId) && _postAuthorId != SessionManager.UserId)
+                    {
+                        var me = SessionManager.Username ?? "Ai đó";
+                        await _chatBll.SendNotificationAsync(_postAuthorId, $"{me} đã bình luận bài viết của bạn.");
+                    }
+                }
 
                 _replyParentId = null;
                 _replyToUsername = null;
+                _replyToUserId = null;
                 _commentInput.Text = string.Empty;
 
                 // Reload post detail to see new comment
@@ -707,6 +732,7 @@ namespace Presentation
                 var userName = comment?.User?.Username ?? "";
                 _replyParentId = comment?.Id;
                 _replyToUsername = userName;
+                _replyToUserId = comment?.User?.UserID;
                 if (!string.IsNullOrWhiteSpace(userName))
                 {
                     _commentInput.Text = "@" + userName + " ";
@@ -942,4 +968,3 @@ namespace Presentation
         }
     }
 }
-

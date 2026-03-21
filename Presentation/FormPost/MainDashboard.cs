@@ -750,6 +750,12 @@ namespace Presentation
                     if (post.IsLiked)
                     {
                         await _postBll.LikeAsync(post.Id);
+                        
+                        if (!string.IsNullOrWhiteSpace(post.User?.UserID) && post.User.UserID != SessionManager.UserId)
+                        {
+                            var me = SessionManager.Username ?? "Ai đó";
+                            await _chatBll.SendNotificationAsync(post.User.UserID, $"{me} đã thích bài viết của bạn.");
+                        }
                     }
                     else
                     {
