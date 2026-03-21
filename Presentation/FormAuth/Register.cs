@@ -126,14 +126,59 @@ namespace Presentation
         // CÁC SỰ KIỆN
         private void btnRegister_Click(object sender, EventArgs e)
         {
+            // 1. Kiểm tra Checkbox điều khoản
             if (!chkTerms.Checked)
             {
-                MessageBox.Show("Vui lòng đồng ý với điều khoản sử dụng!");
+                MessageBox.Show("Vui lòng đồng ý với điều khoản sử dụng!", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-            MessageBox.Show($"Chào mừng {txtName.Text}! Đăng ký thành công.");
-        }
 
+            // 2. Kiểm tra các trường nhập liệu trống
+            if (string.IsNullOrWhiteSpace(txtName.Text) || string.IsNullOrWhiteSpace(txtEmail.Text) ||
+                string.IsNullOrWhiteSpace(txtPass.Text) || string.IsNullOrWhiteSpace(txtAge.Text))
+            {
+                MessageBox.Show("Vui lòng điền đầy đủ thông tin có dấu (*)", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // 3. Kiểm tra định dạng Email cơ bản
+            if (!txtEmail.Text.Contains("@") || !txtEmail.Text.Contains("."))
+            {
+                MessageBox.Show("Định dạng Email không hợp lệ!", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            // 4. Kiểm tra mật khẩu khớp nhau
+            if (txtPass.Text != txtConfirmPass.Text)
+            {
+                MessageBox.Show("Mật khẩu xác nhận không khớp!", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            // 5. Mở Popup Verify
+            // Truyền Email sang Form Verify để hiển thị
+            using (FormAuth.Verify frmVerify = new FormAuth.Verify(txtEmail.Text))
+            {
+                // Hiển thị dạng Dialog để bắt người dùng thao tác xong mới quay lại đây
+                var result = frmVerify.ShowDialog();
+
+                if (result == DialogResult.OK)
+                {
+                    // Nếu mã code nhập đúng (Verify trả về OK)
+                    MessageBox.Show($"Chào mừng {txtName.Text}! Đăng ký thành công.", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                    // Chuyển hướng về trang Login hoặc đóng Form
+                    Login login = new Login();
+                    login.Show();
+                    this.Close();
+                }
+                else
+                {
+                    // Nếu người dùng tắt Form Verify hoặc nhập sai
+                    MessageBox.Show("Xác thực không thành công. Vui lòng thử lại.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+        }
         private void chkTerms_CheckedChanged(object sender, EventArgs e)
         {
             if (chkTerms.Checked)

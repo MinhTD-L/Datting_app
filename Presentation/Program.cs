@@ -1,4 +1,5 @@
 using DataTransferObject;
+using Presentation.FormAuth;
 using Presentation.FormProfile;
 using System.Net.Sockets;
 
@@ -20,7 +21,7 @@ namespace Presentation
             }
             else
             {
-                Application.Run(new Login());
+                Application.Run(new Register());
             }
         }
         public static class SocketManager

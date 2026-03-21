@@ -87,5 +87,15 @@ namespace Presentation.Properties {
                 return ResourceManager.GetString("Term", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap VerifyImg {
+            get {
+                object obj = ResourceManager.GetObject("VerifyImg", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
     }
 }
