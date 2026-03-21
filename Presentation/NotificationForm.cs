@@ -181,6 +181,7 @@ namespace Presentation
 
             card.Height = lblTime.Bottom + 12;
 
+            // Bo góc viền card
             card.Paint += (_, e) =>
             {
                 var rect = card.ClientRectangle;

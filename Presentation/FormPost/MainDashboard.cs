@@ -28,6 +28,9 @@ namespace Presentation
         private Panel _feedLoadingOverlay;
         private Panel _messagesDot;
         private bool _hasUnreadMessages;
+        private Panel _notificationDot;
+        private Button _btnNotification;
+        private bool _hasUnreadNotifications;
         private const int FeedMaxWidth = 680;
 
         public static MainDashboard Instance { get; private set; }
@@ -61,10 +64,8 @@ namespace Presentation
 
         private void InitUi()
         {
-            // Tăng tốc độ render, giảm flicker cho Form
             this.DoubleBuffered = true;
             
-            // Tăng tốc độ render, giảm flicker cho FlowLayoutPanel (PostFeed) và các panel chứa nội dung
             typeof(Control).InvokeMember("DoubleBuffered",
                 BindingFlags.SetProperty | BindingFlags.Instance | BindingFlags.NonPublic,
                 null, PostFeed, new object[] { true });
@@ -80,6 +81,7 @@ namespace Presentation
             PostFeed.SizeChanged += (_, __) => CenterFeedCards();
 
             BuildFeedLoadingOverlay();
+            CustomizeUI();
             this.Load += Dashboard_Load;
 
             btnCreatePost.Click += async (_, __) =>
@@ -105,6 +107,9 @@ namespace Presentation
             WireChatBadge();
             WireGlobalCallEvents();
 
+            BuildNotificationDot();
+            WireNotificationBadge();
+
             btnMessages.Click += (_, __) =>
             {
                 ClearMessagesDot();
@@ -115,7 +120,6 @@ namespace Presentation
 
         private void BuildMessagesDot()
         {
-            // small red dot on Messages button
             _messagesDot = new Panel
             {
                 Size = new Size(10, 10),
@@ -159,7 +163,7 @@ namespace Presentation
             {
                 if (m == null) return;
                 if (string.Equals(m.From, SessionManager.UserId, StringComparison.Ordinal))
-                    return; // don't badge on my own echo
+                    return; 
 
                 if (InvokeRequired)
                 {
@@ -183,6 +187,167 @@ namespace Presentation
         private void ClearMessagesDot()
         {
             SetMessagesDot(false);
+        }
+
+        private void CustomizeUI()
+        {
+            // 1. Bỏ panel suggest
+            var pnlSuggest = this.Controls.Find("pnlSuggest", true).Length > 0 ? this.Controls.Find("pnlSuggest", true)[0] : null;
+            if (pnlSuggest == null) pnlSuggest = this.Controls.Find("panelSuggest", true).Length > 0 ? this.Controls.Find("panelSuggest", true)[0] : null;
+            if (pnlSuggest == null) pnlSuggest = this.Controls.Find("pnlRight", true).Length > 0 ? this.Controls.Find("pnlRight", true)[0] : null;
+            
+            if (pnlSuggest != null)
+            {
+                pnlSuggest.Visible = false;
+                pnlSuggest.Parent?.Controls.Remove(pnlSuggest);
+                pnlSuggest.Dispose();
+            }
+
+            // 2. Cho logo vào giữa
+            var pbLogo = this.Controls.Find("pbLogo", true).Length > 0 ? this.Controls.Find("pbLogo", true)[0] : null;
+            if (pbLogo == null) pbLogo = this.Controls.Find("picLogo", true).Length > 0 ? this.Controls.Find("picLogo", true)[0] : null;
+            if (pbLogo == null) pbLogo = this.Controls.Find("logo", true).Length > 0 ? this.Controls.Find("logo", true)[0] : null;
+
+            var pnlHeader = this.Controls.Find("pnlHeader", true).Length > 0 ? this.Controls.Find("pnlHeader", true)[0] : null;
+            if (pnlHeader == null && pbLogo != null) pnlHeader = pbLogo.Parent;
+
+            if (pbLogo != null && pnlHeader != null)
+            {
+                pbLogo.Anchor = AnchorStyles.None;
+                pbLogo.Left = (pnlHeader.ClientSize.Width - pbLogo.Width) / 2;
+                pnlHeader.SizeChanged += (s, e) =>
+                {
+                    pbLogo.Left = (pnlHeader.ClientSize.Width - pbLogo.Width) / 2;
+                };
+            }
+
+            // 3. Thay thế thanh tìm kiếm bằng Nút Thông báo (Biểu tượng chuông)
+            var txtSearch = this.Controls.Find("txtSearch", true).Length > 0 ? this.Controls.Find("txtSearch", true)[0] : null;
+            var pnlSearch = this.Controls.Find("pnlSearch", true).Length > 0 ? this.Controls.Find("pnlSearch", true)[0] : null;
+            var btnSearch = this.Controls.Find("btnSearch", true).Length > 0 ? this.Controls.Find("btnSearch", true)[0] : null;
+
+            Control searchElement = pnlSearch ?? txtSearch;
+
+            _btnNotification = new Button
+            {
+                Text = "🔔",
+                Font = new Font("Segoe UI Emoji", 14),
+                FlatStyle = FlatStyle.Flat,
+                Size = new Size(40, 40),
+                Cursor = Cursors.Hand,
+                BackColor = Color.Transparent,
+                ForeColor = Color.FromArgb(70, 70, 70)
+            };
+            _btnNotification.FlatAppearance.BorderSize = 0;
+            _btnNotification.FlatAppearance.MouseOverBackColor = Color.FromArgb(240, 240, 240);
+            _btnNotification.FlatAppearance.MouseDownBackColor = Color.FromArgb(232, 232, 232);
+
+            _btnNotification.Click += (_, __) =>
+            {
+                ClearNotificationDot();
+                using var dlg = new NotificationForm(_chatBll);
+                dlg.ShowDialog(this);
+            };
+
+            if (searchElement != null)
+            {
+                _btnNotification.Location = searchElement.Location;
+                searchElement.Parent?.Controls.Add(_btnNotification);
+                _btnNotification.BringToFront();
+
+                searchElement.Visible = false;
+                searchElement.Parent?.Controls.Remove(searchElement);
+                searchElement.Dispose();
+            }
+            else if (pnlHeader != null)
+            {
+                _btnNotification.Location = new Point(20, (pnlHeader.Height - _btnNotification.Height) / 2);
+                pnlHeader.Controls.Add(_btnNotification);
+                _btnNotification.BringToFront();
+            }
+            else
+            {
+                _btnNotification.Location = new Point(20, 20);
+                this.Controls.Add(_btnNotification);
+                _btnNotification.BringToFront();
+            }
+
+            if (btnSearch != null)
+            {
+                btnSearch.Visible = false;
+                btnSearch.Parent?.Controls.Remove(btnSearch);
+                btnSearch.Dispose();
+            }
+        }
+
+        private void BuildNotificationDot()
+        {
+            if (_btnNotification == null) return;
+
+            _notificationDot = new Panel
+            {
+                Size = new Size(10, 10),
+                BackColor = Color.FromArgb(255, 30, 100),
+                Visible = false
+            };
+
+            void ApplyRound(Control c)
+            {
+                var rect = new Rectangle(0, 0, c.Width, c.Height);
+                using var path = new GraphicsPath();
+                path.AddEllipse(rect);
+                c.Region = new Region(path);
+            }
+
+            _notificationDot.SizeChanged += (_, __) => ApplyRound(_notificationDot);
+            ApplyRound(_notificationDot);
+
+            _btnNotification.Controls.Add(_notificationDot);
+            _notificationDot.BringToFront();
+
+            void Reposition()
+            {
+                _notificationDot.Left = _btnNotification.Width - _notificationDot.Width - 4;
+                _notificationDot.Top = 4;
+            }
+            _btnNotification.SizeChanged += (_, __) => Reposition();
+            Reposition();
+        }
+
+        private void WireNotificationBadge()
+        {
+            _chatBll.NotificationReceived -= OnNotificationForBadge;
+            _chatBll.NotificationReceived += OnNotificationForBadge;
+            FormClosed += (_, __) => _chatBll.NotificationReceived -= OnNotificationForBadge;
+        }
+
+        private void OnNotificationForBadge(ChatMessageDto n)
+        {
+            try
+            {
+                if (n == null) return;
+                if (InvokeRequired)
+                {
+                    BeginInvoke(new Action(() => SetNotificationDot(true)));
+                    return;
+                }
+                SetNotificationDot(true);
+            }
+            catch
+            {
+            }
+        }
+
+        private void SetNotificationDot(bool show)
+        {
+            _hasUnreadNotifications = show;
+            if (_notificationDot != null && !_notificationDot.IsDisposed)
+                _notificationDot.Visible = show;
+        }
+
+        private void ClearNotificationDot()
+        {
+            SetNotificationDot(false);
         }
 
         private void BuildFeedLoadingOverlay()

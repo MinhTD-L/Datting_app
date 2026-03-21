@@ -21,7 +21,7 @@ namespace Presentation
             }
             else
             {
-                Application.Run(new Register());
+                Application.Run(new Login());
             }
         }
         public static class SocketManager
