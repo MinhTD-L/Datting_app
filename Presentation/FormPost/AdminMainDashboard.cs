@@ -13,9 +13,9 @@ using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace Presentation
+namespace Presentation.FormAdmin
 {
-    public partial class MainDashboard : Form
+    public partial class AdminMainDashboard : Form
     {
         private readonly PostBLL _postBll;
         private readonly UserBLL _userBll;
@@ -26,20 +26,18 @@ namespace Presentation
 
         private const string BaseUrl = "https://litmatchclone-production-944b.up.railway.app";
         private Panel _feedLoadingOverlay;
-        private Panel _messagesDot;
-        private bool _hasUnreadMessages;
         private Panel _notificationDot;
         private bool _hasUnreadNotifications;
         private const int FeedMaxWidth = 680;
 
-        public static MainDashboard Instance { get; private set; }
+        public static AdminMainDashboard Instance { get; private set; }
 
         private CallForm _activeCallForm;
         private readonly System.Collections.Generic.List<string> _earlyIceCandidates = new();
         private string _earlyAnswerMsgId = null;
         private string _earlyAnswer = null;
 
-        public MainDashboard()
+        public AdminMainDashboard()
         {
             Instance = this;
             _postBll = BusinessLogic.AppServices.PostBll;
@@ -50,7 +48,7 @@ namespace Presentation
             InitUi();
         }
 
-        public MainDashboard(PostBLL postBll, UserBLL userBll)
+        public AdminMainDashboard(PostBLL postBll, UserBLL userBll)
         {
             Instance = this;
             _postBll = postBll ?? throw new ArgumentNullException(nameof(postBll));
@@ -92,12 +90,12 @@ namespace Presentation
 
             pnlBottomNav.SizeChanged += (_, __) =>
             {
-                int totalWidth = btnMatch.Width + btnFriend.Width + btnMessages.Width + btnProfile.Width + 60;
+                int totalWidth = btnUsers.Width + btnReports.Width + btnStats.Width + button1.Width + 60;
                 int startX = (pnlBottomNav.ClientSize.Width - totalWidth) / 2;
-                btnMatch.Left = startX;
-                btnFriend.Left = btnMatch.Right + 20;
-                btnMessages.Left = btnFriend.Right + 20;
-                btnProfile.Left = btnMessages.Right + 20;
+                btnUsers.Left = startX;
+                btnReports.Left = btnUsers.Right + 20;
+                btnStats.Left = btnReports.Right + 20;
+                button1.Left = btnStats.Right + 20;
             };
 
             btnFakeInputText.Click += async (_, __) =>
@@ -107,20 +105,12 @@ namespace Presentation
                     await LoadPosts();
             };
 
-            btnFriend.Click += (_, __) =>
+            btnReports.Click += (_, __) =>
             {
-                using var dlg = new FriendsForm(_friendBll);
+                using var dlg = new AdminReportForm();
                 dlg.ShowDialog(this);
             };
 
-            btnMatch.Click += (_, __) =>
-            {
-                using var dlg = new MatchForm(_chatBll);
-                dlg.ShowDialog(this);
-            };
-
-            BuildMessagesDot();
-            WireChatBadge();
             WireGlobalCallEvents();
 
             BuildNotificationDot();
@@ -137,85 +127,7 @@ namespace Presentation
             pnlCreatePost.SizeChanged += (_, __) => CenterCreatePost();
             CenterCreatePost();
 
-            btnMessages.Click += (_, __) =>
-            {
-                ClearMessagesDot();
-                using var dlg = new ConversationsForm(_chatBll);
-                dlg.ShowDialog(this);
-            };
-
             _ = LoadCurrentUserAvatarAsync();
-        }
-
-        private void BuildMessagesDot()
-        {
-            _messagesDot = new Panel
-            {
-                Size = new Size(10, 10),
-                BackColor = Color.FromArgb(255, 30, 100),
-                Visible = false
-            };
-
-            void ApplyRound(Control c)
-            {
-                var rect = new Rectangle(0, 0, c.Width, c.Height);
-                using var path = new GraphicsPath();
-                path.AddEllipse(rect);
-                c.Region = new Region(path);
-            }
-
-            _messagesDot.SizeChanged += (_, __) => ApplyRound(_messagesDot);
-            ApplyRound(_messagesDot);
-
-            btnMessages.Controls.Add(_messagesDot);
-            _messagesDot.BringToFront();
-
-            void Reposition()
-            {
-                _messagesDot.Left = btnMessages.Width - _messagesDot.Width - 14;
-                _messagesDot.Top = 10;
-            }
-            btnMessages.SizeChanged += (_, __) => Reposition();
-            Reposition();
-        }
-
-        private void WireChatBadge()
-        {
-            _chatBll.MessageReceived -= OnChatMessageForBadge;
-            _chatBll.MessageReceived += OnChatMessageForBadge;
-            FormClosed += (_, __) => _chatBll.MessageReceived -= OnChatMessageForBadge;
-        }
-
-        private void OnChatMessageForBadge(ChatMessageDto m)
-        {
-            try
-            {
-                if (m == null) return;
-                if (string.Equals(m.From, SessionManager.UserId, StringComparison.Ordinal))
-                    return;
-
-                if (InvokeRequired)
-                {
-                    BeginInvoke(new Action(() => SetMessagesDot(true)));
-                    return;
-                }
-                SetMessagesDot(true);
-            }
-            catch
-            {
-            }
-        }
-
-        private void SetMessagesDot(bool show)
-        {
-            _hasUnreadMessages = show;
-            if (_messagesDot != null && !_messagesDot.IsDisposed)
-                _messagesDot.Visible = show;
-        }
-
-        private void ClearMessagesDot()
-        {
-            SetMessagesDot(false);
         }
 
         private void CenterCreatePost()
@@ -608,18 +520,24 @@ namespace Presentation
             btnMore.FlatAppearance.BorderSize = 0;
 
             var cmOptions = new ContextMenuStrip();
-            cmOptions.Items.Add("Báo cáo người dùng", null, async (_, __) => {
-                using var frm = new Presentation.FormReport.SubmitReportForm("user", post.User?.UserID);
-                if (frm.ShowDialog(this) == DialogResult.OK)
+            cmOptions.Items.Add("Khóa bài đăng", null, async (_, __) => {
+                var confirm = MessageBox.Show(this, "Bạn chắc chắn muốn khóa (xóa) bài đăng này?", "Xác nhận khóa", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                if (confirm == DialogResult.Yes)
                 {
-                    try { await _chatBll.SendNotificationAsync("admin", $"Có báo cáo mới về người dùng (ID: {post.User?.UserID})"); } catch { }
-                }
-            });
-            cmOptions.Items.Add("Báo cáo bài viết", null, async (_, __) => {
-                using var frm = new Presentation.FormReport.SubmitReportForm("post", post.Id);
-                if (frm.ShowDialog(this) == DialogResult.OK)
-                {
-                    try { await _chatBll.SendNotificationAsync("admin", $"Có báo cáo mới về bài đăng (ID: {post.Id})"); } catch { }
+                    try
+                    {
+                        await _postBll.AdminDeletePostAsync(post.Id);
+                        if (!string.IsNullOrWhiteSpace(post.User?.UserID))
+                        {
+                            await _chatBll.SendNotificationAsync(post.User.UserID, "Bài đăng của bạn đã bị quản trị viên khóa do vi phạm tiêu chuẩn cộng đồng.");
+                        }
+                        MessageBox.Show(this, "Khóa bài đăng thành công.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        card.Visible = false; // Ẩn thẻ bài đăng ngay lập tức
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(this, "Lỗi khi khóa bài: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
                 }
             });
 
@@ -925,11 +843,8 @@ namespace Presentation
         private void OpenUserProfile(string userId)
         {
             if (string.IsNullOrWhiteSpace(userId)) return;
-            if (userId == SessionManager.UserId)
-            {
-                btnProfile.PerformClick();
-                return;
-            }
+            if (userId == SessionManager.UserId) return;
+            
             var userProfile = new UserProfile(userId, this);
             userProfile.Show();
             this.Hide();
@@ -1217,13 +1132,6 @@ namespace Presentation
             if (span.TotalHours < 24) return $"{(int)span.TotalHours} giờ trước";
 
             return localTime.ToString("dd/MM/yyyy HH:mm");
-        }
-
-        private void btnProfile_Click(object sender, EventArgs e)
-        {
-            Profile profile = new Profile(this);
-            profile.Show();
-            this.Hide();
         }
 
         private void btnHome_Click(object sender, EventArgs e)

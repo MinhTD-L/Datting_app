@@ -51,6 +51,10 @@ namespace DataAccess
         {
             return _api.GetAsync<FriendsResponseDto>("friend/list");
         }
+
+        public Task<FriendsResponseDto> GetUserFriendsAsync(string userId)
+        {
+            return _api.GetAsync<FriendsResponseDto>($"friend/list/{userId}");
+        }
     }
 }
-

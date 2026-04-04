@@ -27,7 +27,7 @@ namespace Presentation
 
         private readonly List<LocalMedia> _selected = new();
         private string _contentPlaceholder = "Bạn đang nghĩ gì thế?";
-        private const string BaseUrl = "https://litmatchclone-production.up.railway.app";
+        private const string BaseUrl = "https://litmatchclone-production-944b.up.railway.app";
 
         private sealed class LocalMedia
         {
@@ -488,20 +488,21 @@ namespace Presentation
                 return;
             }
 
-            SetBusy(true, "Đang tạo bài viết...");
+            SetBusy(true, "Đang tải lên dữ liệu...");
 
             try
             {
-                var mediaPaths = new List<string>();
+                    var mediaPaths = new List<string>();
                 foreach (var item in _selected)
                 {
-                    mediaPaths.Add(item.Path);
+                        mediaPaths.Add(item.Path);
                 }
 
-                var result = await _postBll.CreatePostAsync(content, mediaPaths);
+                _lblStatus.Text = "Đang tạo bài viết...";
+                    var result = await _postBll.CreatePostAsync(content, mediaPaths);
 
                 if (result?.Post == null || string.IsNullOrWhiteSpace(result.Post.Id))
-                    throw new Exception("Tạo bài viết thất bại.");
+                    throw new Exception("Tạo bài viết thất bại (Server không trả về ID bài viết).");
 
                 _lblStatus.Text = "Đăng bài thành công.";
                 DialogResult = DialogResult.OK;
@@ -518,10 +519,17 @@ namespace Presentation
             }
             catch (Exception ex)
             {
+                string errorMsg = ex.Message;
+                if (ex.InnerException != null)
+                {
+                    errorMsg += "\n\nNguyên nhân gốc (Inner Exception):\n" + ex.InnerException.Message;
+                }
+                errorMsg += "\n\nStack Trace:\n" + ex.StackTrace;
+
                 MessageBox.Show(
                     this,
-                    "Không thể đăng bài: " + ex.Message,
-                    "Lỗi",
+                    "Không thể đăng bài. Chi tiết lỗi:\n\n" + errorMsg,
+                    "Thông tin gỡ lỗi chi tiết",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
             }
@@ -570,7 +578,7 @@ namespace Presentation
         {
             try
             {
-                var profile = await _userBll.GetProfileAsync();
+                var profile = await _userBll.GetMyProfileAsync();
 
                 var displayName = (profile?.FullName
                                    ?? profile?.UserName

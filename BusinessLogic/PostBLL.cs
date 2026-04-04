@@ -26,6 +26,13 @@ namespace BusinessLogic
             return _postDal.GetMyPosts(limit, page);
         }
 
+        public Task<GetPostResponseDTO> GetUserPostsAsync(string userId, int limit = 20, int page = 1)
+        {
+            if (string.IsNullOrWhiteSpace(userId)) throw new ArgumentException("userId is required.", nameof(userId));
+            
+            return _postDal.GetUserPosts(userId, limit, page);
+        }
+
         public Task<PostFeedDTO> GetPostDetailAsync(string postId)
         {
             if (string.IsNullOrWhiteSpace(postId))
@@ -92,6 +99,14 @@ namespace BusinessLogic
                 throw new ArgumentException("postId is required.", nameof(postId));
 
             return _postDal.DeletePost(postId);
+        }
+
+        public Task<DeletePostResponseDTO> AdminDeletePostAsync(string postId)
+        {
+            if (string.IsNullOrWhiteSpace(postId))
+                throw new ArgumentException("postId is required.", nameof(postId));
+
+            return _postDal.AdminDeletePost(postId);
         }
 
         public Task<APIresponseDTO> DeleteCommentAsync(string commentId)

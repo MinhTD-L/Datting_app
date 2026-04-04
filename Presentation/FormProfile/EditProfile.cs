@@ -26,7 +26,7 @@ namespace Presentation.FormProfile
         private string _pickedAvatarPath;
         private bool _avatarDirty;
 
-        private const string BaseUrl = "https://litmatchclone-production.up.railway.app";
+        private const string BaseUrl = "https://litmatchclone-production-944b.up.railway.app/";
 
         public EditProfile(UserBLL userBll, UserProfileDTO seed)
         {

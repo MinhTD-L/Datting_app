@@ -455,7 +455,6 @@ namespace BusinessLogic
                         break;
                     }
                     case "ice-candidate":
-                    case "ice_candidate":
                     {
                         var from = doc.RootElement.TryGetProperty("from", out var elFrom) ? elFrom.GetString() : "";
                         var candidate = "";

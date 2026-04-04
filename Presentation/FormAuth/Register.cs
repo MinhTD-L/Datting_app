@@ -1,4 +1,4 @@
-﻿﻿using System;
+﻿﻿﻿﻿using System;
 using System.Drawing;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -169,38 +169,48 @@ namespace Presentation
                     Email = txtEmail.Text.Trim(),
                     Password = txtPass.Text
                 };
+                
+                // Giả định rằng RegisterAsync trả về một đối tượng kết quả có thuộc tính Status và Error, tương tự như LoginAsync.
+                var result = await _userBll.RegisterAsync(registerDto);
 
-                await _userBll.RegisterAsync(registerDto);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Đăng ký thất bại: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                btnRegister.Enabled = true;
-                return;
-            }
-
-            btnRegister.Enabled = true;
-
-            using (FormAuth.Verify frmVerify = new FormAuth.Verify(txtEmail.Text))
-            {
-                // Hiển thị dạng Dialog để bắt người dùng thao tác xong mới quay lại đây
-                var result = frmVerify.ShowDialog();
-
-                if (result == DialogResult.OK)
+                if (result != null && result.Status == "success")
                 {
-                    // Nếu mã code nhập đúng (Verify trả về OK)
-                    MessageBox.Show($"Chào mừng {txtName.Text}! Đăng ký thành công.", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    // Gọi API đăng ký thành công, tiếp tục xác thực email.
+                    btnRegister.Enabled = true; // Bật lại nút trước khi hiển thị dialog
 
-                    // Chuyển hướng về trang Login hoặc đóng Form
-                    Login login = new Login();
-                    login.Show();
-                    this.Close();
+                    using (FormAuth.Verify frmVerify = new FormAuth.Verify(txtEmail.Text))
+                    {
+                        // Hiển thị dạng Dialog để bắt người dùng thao tác xong mới quay lại đây
+                        var verifyResult = frmVerify.ShowDialog();
+
+                        if (verifyResult == DialogResult.OK)
+                        {
+                            // Nếu mã code nhập đúng (Verify trả về OK)
+                            MessageBox.Show($"Chào mừng {txtName.Text}! Đăng ký thành công.", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                            // Chuyển hướng về trang Login hoặc đóng Form
+                            Login login = new Login();
+                            login.Show();
+                            this.Close();
+                        }
+                        else
+                        {
+                            // Nếu người dùng tắt Form Verify hoặc nhập sai
+                            MessageBox.Show("Xác thực không thành công. Vui lòng thử lại.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                    }
                 }
                 else
                 {
-                    // Nếu người dùng tắt Form Verify hoặc nhập sai
-                    MessageBox.Show("Xác thực không thành công. Vui lòng thử lại.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    // Gọi API đăng ký thất bại, hiển thị lỗi từ API.
+                    
                 }
+            }
+            catch (Exception ex)
+            {
+                // Bắt các lỗi mạng hoặc các exception không mong muốn khác.
+                MessageBox.Show("Đăng ký thất bại: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                btnRegister.Enabled = true;
             }
         }
         private void chkTerms_CheckedChanged(object sender, EventArgs e)

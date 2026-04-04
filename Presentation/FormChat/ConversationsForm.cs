@@ -23,7 +23,7 @@ namespace Presentation.FormChat
         private readonly Dictionary<string, Control> _rowByUserId = new(StringComparer.Ordinal);
         private string _activeChatUserId = null;
 
-        private const string BaseUrl = "https://litmatchclone-production.up.railway.app";
+        private const string BaseUrl = "https://litmatchclone-production-944b.up.railway.app";
 
         public ConversationsForm(ChatBLL chatBll)
         {

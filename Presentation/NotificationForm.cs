@@ -144,7 +144,7 @@ namespace Presentation
             {
                 Width = 350,
                 BackColor = Color.White,
-                Margin = new Padding(0, 0, 0, 8)
+                Margin = new Padding(0, 0, 0, 16)
             };
 
             var icon = new Label
@@ -160,11 +160,14 @@ namespace Presentation
             {
                 Text = n.Content ?? "Bạn có một thông báo mới",
                 AutoSize = true,
-                MaximumSize = new Size(290, 0),
+                MaximumSize = new Size(280, 0),
                 Font = new Font("Segoe UI", 10),
                 ForeColor = Color.FromArgb(30, 30, 30),
-                Location = new Point(44, 14)
+                Location = new Point(56, 14)
             };
+
+            // Ép WinForms tính toán chiều cao thật của nội dung khi bị giới hạn chiều rộng là 280
+            lblContent.Size = lblContent.GetPreferredSize(new Size(280, 0));
 
             var lblTime = new Label
             {
@@ -172,8 +175,11 @@ namespace Presentation
                 AutoSize = true,
                 Font = new Font("Segoe UI", 8),
                 ForeColor = Color.Gray,
-                Location = new Point(44, lblContent.Bottom + 6)
+                Location = new Point(56, lblContent.Bottom + 6)
             };
+            
+            // Ép tính toán kích thước của thời gian
+            lblTime.Size = lblTime.GetPreferredSize(Size.Empty);
 
             card.Controls.Add(icon);
             card.Controls.Add(lblContent);

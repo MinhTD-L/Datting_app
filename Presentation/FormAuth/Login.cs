@@ -44,7 +44,7 @@ namespace Presentation
                 // Kiểm tra Role của User
                 if (!string.IsNullOrEmpty(result.User.Role) && result.User.Role.ToLower() == "admin")
                 {
-                    Presentation.FormAdmin.AdminReportForm adminForm = new Presentation.FormAdmin.AdminReportForm();
+                    Presentation.FormAdmin.AdminMainDashboard adminForm = new Presentation.FormAdmin.AdminMainDashboard();
                     adminForm.Show();
                     this.Hide();
                 }

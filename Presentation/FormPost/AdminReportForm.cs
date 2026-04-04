@@ -33,12 +33,20 @@ namespace Presentation.FormAdmin
         private void BuildUI()
         {
             var pnlTop = new Panel { Dock = DockStyle.Top, Height = 60, BackColor = Color.White };
-            _btnRefresh = new Button { Text = "Tải lại", Location = new Point(20, 15), Width = 100, Height = 30, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(255, 30, 100), ForeColor = Color.White };
+            
+            var btnBack = new Button { Text = "🔙 Trở về", Location = new Point(20, 15), Width = 100, Height = 30, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(240, 240, 240), ForeColor = Color.Black };
+            btnBack.FlatAppearance.BorderSize = 0;
+            btnBack.Click += (_, __) => Close();
+            btnBack.Cursor = Cursors.Hand;
+
+            _btnRefresh = new Button { Text = "Tải lại", Location = new Point(130, 15), Width = 100, Height = 30, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(255, 30, 100), ForeColor = Color.White };
             _btnRefresh.FlatAppearance.BorderSize = 0;
             _btnRefresh.Click += async (_, __) => await LoadDataAsync();
+            _btnRefresh.Cursor = Cursors.Hand;
 
-            var lblTitle = new Label { Text = "Danh sách Báo cáo", Font = new Font("Segoe UI", 14, FontStyle.Bold), Location = new Point(140, 15), AutoSize = true };
+            var lblTitle = new Label { Text = "Danh sách Báo cáo", Font = new Font("Segoe UI", 14, FontStyle.Bold), Location = new Point(250, 15), AutoSize = true };
 
+            pnlTop.Controls.Add(btnBack);
             pnlTop.Controls.Add(_btnRefresh);
             pnlTop.Controls.Add(lblTitle);
 

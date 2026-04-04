@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 public class ChatSocketDAL
 {
-    private readonly Uri _serverUri = new Uri("wss://litmatchclone-production.up.railway.app/interact/ws");
+    private readonly Uri _serverUri = new Uri("wss://litmatchclone-production-944b.up.railway.app/interact/ws");
 
     private ClientWebSocket _socket;
     private CancellationTokenSource _cts;

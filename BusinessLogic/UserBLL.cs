@@ -54,6 +54,23 @@ namespace BusinessLogic
             };
         }
 
+        public async Task<UserProfileDTO> GetUserProfileAsync(string userId)
+        {
+            var res = await _userDal.GetUserProfile(userId);
+            var u = res?.User;
+
+            return new UserProfileDTO
+            {
+                Id = u?.Id,
+                UserName = u?.Username,
+                FullName = u?.FullName,
+                AvatarUrl = u?.AvatarUrl,
+                Gender = u?.Gender,
+                DateOfBirth = u?.DateOfBirth,
+                Bio = u?.Bio
+            };
+        }
+
         public async Task<UserProfileDTO> SetupProfileAsync(SetupProfileDTO dto)
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));

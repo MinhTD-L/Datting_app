@@ -29,6 +29,13 @@ namespace DataAccess
 
             return await _api.GetAsync<GetPostResponseDTO>($"interact/post/me?limit={limit}&page={page}");
         }
+        public async Task<GetPostResponseDTO> GetUserPosts(string userId, int limit = 20, int page = 1)
+        {
+            if (limit <= 0 || limit > 20) limit = 20;
+            if (page <= 0) page = 1;
+
+            return await _api.GetAsync<GetPostResponseDTO>($"interact/user/{userId}/posts?limit={limit}&page={page}");
+        }
         public async Task<CreateResponeDTO> CreatePost(CreatePostDTO dto)
         {
             return await _api.PostAsync<CreatePostDTO, CreateResponeDTO>(
@@ -44,7 +51,7 @@ namespace DataAccess
 
             using var client = new HttpClient
             {
-                BaseAddress = new Uri("https://litmatchclone-production.up.railway.app/")
+                BaseAddress = new Uri("https://litmatchclone-production-944b.up.railway.app/")
             };
 
             if (!string.IsNullOrEmpty(SessionManager.Token))
@@ -55,7 +62,7 @@ namespace DataAccess
 
             using var form = new MultipartFormDataContent();
 
-            var contextType = string.IsNullOrWhiteSpace(dto.Type) ? "post" : dto.Type;
+            var contextType = string.IsNullOrWhiteSpace(dto.Type) ? "chat" : dto.Type;
             form.Add(new StringContent(contextType), "type");
 
             using var fs = new FileStream(dto.FilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
@@ -252,6 +259,15 @@ namespace DataAccess
 
             return await _api.DeleteAsync<DeletePostResponseDTO>($"interact/post/{postId}");
         }
+
+        public async Task<DeletePostResponseDTO> AdminDeletePost(string postId)
+        {
+            if (string.IsNullOrWhiteSpace(postId))
+                throw new ArgumentException("postId is required.", nameof(postId));
+
+            return await _api.DeleteAsync<DeletePostResponseDTO>($"interact/user/post/{postId}");
+        }
+
         public async Task<APIresponseDTO> LikePost(LikePostDTO dto)
         {
             return await _api.PostAsync<LikePostDTO, APIresponseDTO>(

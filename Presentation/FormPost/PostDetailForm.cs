@@ -28,7 +28,7 @@ namespace Presentation
         private string _postAuthorId;
         private string _replyToUserId;
 
-        private const string BaseUrl = "https://litmatchclone-production.up.railway.app";
+        private const string BaseUrl = "https://litmatchclone-production-944b.up.railway.app";
 
         public PostDetailForm(PostBLL postBll, string postId, bool openComments = false)
         {

@@ -22,7 +22,7 @@ namespace Presentation.FormAuth
             InitializeComponent();
             _targetEmail = email;
             _userBll = BusinessLogic.AppServices.UserBll;
-            lblEmail.Text = _targetEmail; // Hiển thị email người dùng vừa nhập
+            lblEmail.Text = _targetEmail; 
         }
 
         private void lblReSend_Click(object sender, EventArgs e)

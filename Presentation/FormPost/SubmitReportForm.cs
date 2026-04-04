@@ -20,7 +20,7 @@ namespace Presentation.FormReport
         public SubmitReportForm(string type, string targetId)
         {
             _reportBll = new ReportBLL();
-            _type = type; // "user" or "post"
+            _type = type; 
             _targetId = targetId;
 
             Text = type == "user" ? "Báo cáo người dùng" : "Báo cáo bài viết";

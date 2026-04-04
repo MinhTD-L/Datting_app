@@ -45,7 +45,7 @@ namespace Presentation.FormChat
         private bool _hasMoreHistory = true;
         private const int PageSize = 20;
 
-        private const string BaseUrl = "https://litmatchclone-production.up.railway.app";
+        private const string BaseUrl = "https://litmatchclone-production-944b.up.railway.app";
 
         public ChatWindow(ChatBLL chatBll, string withUserId, string withName, string withAvatar, string sessionId = null)
         {
@@ -169,7 +169,8 @@ namespace Presentation.FormChat
                 Size = new Size(44, 44),
                 Location = new Point(btnBack.Right + 10, 14),
                 BackColor = Color.FromArgb(238, 238, 238),
-                SizeMode = PictureBoxSizeMode.Zoom
+                SizeMode = PictureBoxSizeMode.Zoom,
+                Cursor = Cursors.Hand
             };
             ApplyRound(_avatarBox);
 
@@ -179,8 +180,19 @@ namespace Presentation.FormChat
                 AutoSize = true,
                 Font = new Font("Segoe UI", 11, FontStyle.Bold),
                 ForeColor = Color.FromArgb(30, 30, 30),
-                Location = new Point(_avatarBox.Right + 10, 16)
+                Location = new Point(_avatarBox.Right + 10, 16),
+                Cursor = Cursors.Hand
             };
+
+            void OpenProfile()
+            {
+                if (string.IsNullOrWhiteSpace(_withUserId)) return;
+                var profileForm = new Presentation.FormProfile.UserProfile(_withUserId, this);
+                profileForm.Show();
+                this.Hide();
+            }
+            _avatarBox.Click += (_, __) => OpenProfile();
+            lblName.Click += (_, __) => OpenProfile();
 
             _lblStatus = new Label
             {

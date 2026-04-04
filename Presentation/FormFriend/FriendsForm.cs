@@ -23,7 +23,7 @@ namespace Presentation.FormFriend
 
         private readonly Label _lblStatus;
 
-        private const string BaseUrl = "https://litmatchclone-production.up.railway.app";
+        private const string BaseUrl = "https://litmatchclone-production-944b.up.railway.app";
 
         public FriendsForm(FriendBLL friendBll)
         {
@@ -212,7 +212,8 @@ namespace Presentation.FormFriend
                 AutoSize = true,
                 Font = new Font("Segoe UI", 11, FontStyle.Bold),
                 ForeColor = Color.FromArgb(30, 30, 30),
-                Location = new Point(avatar.Right + 12, 26)
+                Location = new Point(avatar.Right + 12, 26),
+                Cursor = Cursors.Hand
             };
 
             var btnMsg = new Button
@@ -267,8 +268,16 @@ namespace Presentation.FormFriend
                 e.Graphics.DrawRectangle(pen, rect);
             };
 
-            avatar.Click += (_, __) => btnMsg.PerformClick();
-            lblName.Click += (_, __) => btnMsg.PerformClick();
+            void OpenProfile()
+            {
+                if (string.IsNullOrWhiteSpace(f?.UserId)) return;
+                var profileForm = new Presentation.FormProfile.UserProfile(f.UserId, this);
+                profileForm.Show();
+                this.Hide();
+            }
+
+            avatar.Click += (_, __) => OpenProfile();
+            lblName.Click += (_, __) => OpenProfile();
             card.Click += (_, __) => btnMsg.PerformClick();
 
             return card;

@@ -11,7 +11,7 @@ public class ApiClient
     public ApiClient()
     {
         _client = new HttpClient();
-        _client.BaseAddress = new Uri("https://litmatchclone-production.up.railway.app/");
+        _client.BaseAddress = new Uri("https://litmatchclone-production-944b.up.railway.app/");
     }
 
     private void AttachToken()

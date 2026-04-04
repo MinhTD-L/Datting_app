@@ -60,6 +60,11 @@ namespace DataAccess
             return await _api.GetAsync<GetMyProfileResponseDTO>("user/profile");
         }
 
+        public async Task<GetMyProfileResponseDTO> GetUserProfile(string userId)
+        {
+            return await _api.GetAsync<GetMyProfileResponseDTO>($"user/profile/{userId}");
+        }
+
         public async Task<SetupProfileResponseDTO> SetupProfile(SetupProfileRequestDTO dto)
         {
             if (dto == null) throw new ArgumentNullException(nameof(dto));
@@ -74,7 +79,7 @@ namespace DataAccess
 
             using var client = new HttpClient
             {
-                BaseAddress = new Uri("https://litmatchclone-production.up.railway.app/")
+                BaseAddress = new Uri("https://litmatchclone-production-944b.up.railway.app/")
             };
 
             if (!string.IsNullOrEmpty(SessionManager.Token))

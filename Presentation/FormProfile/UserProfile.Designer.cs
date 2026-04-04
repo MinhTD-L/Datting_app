@@ -1,6 +1,6 @@
 namespace Presentation.FormProfile
 {
-    partial class Profile
+    partial class UserProfile
     {
         private System.ComponentModel.IContainer components = null;
 
@@ -135,15 +135,15 @@ namespace Presentation.FormProfile
             lblMyPostHead.Name = "lblMyPostHead";
             lblMyPostHead.Size = new Size(117, 20);
             lblMyPostHead.TabIndex = 0;
-            lblMyPostHead.Text = "Bài đăng của tôi";
+            lblMyPostHead.Text = "Bài đăng";
             // 
-            // Profile
+            // UserProfile
             // 
             ClientSize = new Size(1000, 750);
             Controls.Add(flpContent);
             Controls.Add(pnlHeader);
-            Name = "Profile";
-            Text = "Hồ sơ cá nhân";
+            Name = "UserProfile";
+            Text = "Hồ sơ người dùng";
             pnlHeader.ResumeLayout(false);
             pnlHeader.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)pbAvatar).EndInit();

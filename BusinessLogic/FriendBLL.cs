@@ -15,6 +15,8 @@ namespace BusinessLogic
         }
 
         public Task<FriendsResponseDto> GetFriendsAsync() => _friendDal.GetFriendsAsync();
+        
+        public Task<FriendsResponseDto> GetUserFriendsAsync(string userId) => _friendDal.GetUserFriendsAsync(userId);
 
         public Task<FriendRequestsResponseDto> GetRequestsAsync() => _friendDal.GetRequestsAsync();
 
@@ -25,4 +27,3 @@ namespace BusinessLogic
         public Task RejectRequestAsync(string requestId) => _friendDal.RejectRequestAsync(requestId);
     }
 }
-
