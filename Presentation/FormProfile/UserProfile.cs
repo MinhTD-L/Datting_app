@@ -34,6 +34,7 @@ namespace Presentation.FormProfile
         private FlowLayoutPanel flpFriendsGrid;
         private Label lblFullName;
         private Label lblDob;
+        private FlowLayoutPanel flpTags;
 
         private const string BaseUrl = "https://litmatchclone-production-944b.up.railway.app";
         private const int FeedMaxWidth = 680;
@@ -122,6 +123,28 @@ namespace Presentation.FormProfile
             if (lblBio != null) lblBio.Text = string.IsNullOrWhiteSpace(profile?.Bio) ? "Chưa có giới thiệu." : profile.Bio.Trim();
 
             _ = LoadAvatarAsync(profile?.AvatarUrl);
+
+            if (flpTags != null)
+            {
+                flpTags.Controls.Clear();
+                if (profile?.Tags != null && profile.Tags.Count > 0)
+                {
+                    foreach (var tag in profile.Tags)
+                    {
+                        var lblTag = new Label
+                        {
+                            Text = $"#{tag.Trim()}",
+                            AutoSize = true,
+                            Font = new Font("Segoe UI", 9, FontStyle.Regular),
+                            ForeColor = Color.FromArgb(24, 119, 242),
+                            BackColor = Color.FromArgb(230, 242, 255),
+                            Padding = new Padding(4),
+                            Margin = new Padding(0, 0, 5, 5)
+                        };
+                        flpTags.Controls.Add(lblTag);
+                    }
+                }
+            }
         }
 
         private async Task LoadAvatarAsync(string avatarUrl)
@@ -679,15 +702,40 @@ namespace Presentation.FormProfile
             var lblAboutHead = new Label { Text = "Giới thiệu", Font = new Font("Segoe UI", 11, FontStyle.Bold), AutoSize = true, Location = new Point(12, 12) };
             lblFullName = new Label { Text = "Tên thật: ...", Font = new Font("Segoe UI", 9), AutoSize = true, Location = new Point(12, 40) };
             lblDob = new Label { Text = "Sinh nhật: ...", Font = new Font("Segoe UI", 9), AutoSize = true, Location = new Point(12, 60) };
+
+            flpTags = new FlowLayoutPanel
+            {
+                Location = new Point(12, 85),
+                Width = pnlIntro.Width - 24,
+                AutoSize = true,
+                WrapContents = true,
+                BackColor = Color.Transparent
+            };
+
             lblBio.Text = "Chưa có giới thiệu.";
             lblBio.Font = new Font("Segoe UI", 9, FontStyle.Italic);
             lblBio.ForeColor = Color.FromArgb(80, 80, 80);
-            lblBio.Location = new Point(12, 85);
+            lblBio.Location = new Point(12, 110);
             lblBio.MaximumSize = new Size(pnlIntro.Width - 24, 0);
             lblBio.AutoSize = true;
 
-            pnlIntro.Controls.Add(lblAboutHead); pnlIntro.Controls.Add(lblFullName); pnlIntro.Controls.Add(lblDob); pnlIntro.Controls.Add(lblBio);
-            pnlIntro.SizeChanged += (_, __) => { lblBio.MaximumSize = new Size(pnlIntro.Width - 24, 0); pnlIntro.Height = lblBio.Bottom + 12; };
+            pnlIntro.Controls.Add(lblAboutHead); pnlIntro.Controls.Add(lblFullName); pnlIntro.Controls.Add(lblDob); pnlIntro.Controls.Add(flpTags); pnlIntro.Controls.Add(lblBio);
+
+            void LayoutIntro()
+            {
+                lblBio.MaximumSize = new Size(pnlIntro.Width - 24, 0);
+                flpTags.MaximumSize = new Size(pnlIntro.Width - 24, 0);
+                int currentY = lblDob.Bottom + 10;
+                if (flpTags.Controls.Count > 0) { flpTags.Visible = true; flpTags.Top = currentY; currentY = flpTags.Bottom + 10; }
+                else { flpTags.Visible = false; }
+                lblBio.Top = currentY;
+                pnlIntro.Height = lblBio.Bottom + 12;
+            }
+
+            pnlIntro.SizeChanged += (_, __) => LayoutIntro();
+            flpTags.SizeChanged += (_, __) => LayoutIntro();
+            lblBio.SizeChanged += (_, __) => LayoutIntro();
+
             pnlLeftColumn.Controls.Add(pnlIntro);
 
             pnlFriends = new Panel { BackColor = Color.White, Margin = new Padding(0, 0, 0, 16) };

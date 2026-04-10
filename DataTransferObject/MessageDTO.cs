@@ -185,6 +185,12 @@ namespace DataTransferObject
 
         [JsonPropertyName("looking_for")]
         public string LookingFor { get; set; }
+
+        [JsonPropertyName("min_age")]
+        public int MinAge { get; set; }
+
+        [JsonPropertyName("max_age")]
+        public int MaxAge { get; set; }
     }
 
     public class WaitingDto

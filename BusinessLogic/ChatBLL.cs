@@ -151,13 +151,18 @@ namespace BusinessLogic
             return _socket.SendMessage(new WSMessageDto { Type = "set_offline" });
         }
 
-        public Task JoinMatchAsync(string lookingFor)
+        public Task JoinMatchAsync(string lookingFor, int minAge, int maxAge)
         {
             if (string.IsNullOrWhiteSpace(lookingFor))
                 return Task.CompletedTask;
 
-            // Backend contract: { type: "join_match", looking_for: "male"/"female"/"other" }
-            return _socket.SendMessage(new JoinMatchDto { LookingFor = lookingFor });
+            // Backend contract: { type: "join_match", looking_for: "male"/"female"/"other", min_age: 18, max_age: 30 }
+            return _socket.SendMessage(new JoinMatchDto
+            {
+                LookingFor = lookingFor,
+                MinAge = minAge,
+                MaxAge = maxAge
+            });
         }
 
         public Task LeaveMatchAsync()

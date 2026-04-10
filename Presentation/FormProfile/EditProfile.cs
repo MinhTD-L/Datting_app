@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.Net.Http;
+using System.Linq;
 using BusinessLogic;
 using DataTransferObject;
 
@@ -19,6 +20,7 @@ namespace Presentation.FormProfile
         private ComboBox _cboGender;
         private DateTimePicker _dtDob;
         private TextBox _txtBio;
+        private TextBox _txtTags;
         private Button _btnSave;
         private Button _btnCancel;
         private Button _btnPickAvatar;
@@ -169,6 +171,23 @@ namespace Presentation.FormProfile
             bioWrap.Controls.Add(_txtBio);
             bioWrap.Controls.Add(lblBio);
 
+            var tagsWrap = new Panel { Dock = DockStyle.Top, Height = 70, Padding = new Padding(0, 10, 0, 0) };
+            var lblTags = new Label
+            {
+                Text = "Sở thích / Tags (cách nhau bởi dấu phẩy)",
+                AutoSize = true,
+                Font = new Font("Segoe UI", 9, FontStyle.Bold),
+                ForeColor = Color.FromArgb(60, 60, 60),
+                Dock = DockStyle.Top
+            };
+            _txtTags = new TextBox
+            {
+                Font = new Font("Segoe UI", 10),
+                Dock = DockStyle.Top
+            };
+            tagsWrap.Controls.Add(_txtTags);
+            tagsWrap.Controls.Add(lblTags);
+
             var footer = new Panel
             {
                 Dock = DockStyle.Bottom,
@@ -223,6 +242,7 @@ namespace Presentation.FormProfile
             footer.Controls.Add(btnRow);
             footer.Controls.Add(_lblStatus);
 
+            body.Controls.Add(tagsWrap);
             body.Controls.Add(bioWrap);
             body.Controls.Add(grid);
             body.Controls.Add(avatarRow);
@@ -236,6 +256,7 @@ namespace Presentation.FormProfile
         {
             _txtFullName.Text = _seed?.FullName ?? "";
             _txtBio.Text = _seed?.Bio ?? "";
+            _txtTags.Text = _seed?.Tags != null ? string.Join(", ", _seed.Tags) : "";
 
             var g = (_seed?.Gender ?? "").Trim();
             if (g == "") g = "other";
@@ -272,13 +293,19 @@ namespace Presentation.FormProfile
                     avatarUrl = await _userBll.UploadAvatarAsync(_pickedAvatarPath);
                 }
 
+                var tagsList = _txtTags.Text?.Split(new[] { ',' }, System.StringSplitOptions.RemoveEmptyEntries)
+                    .Select(t => t.Trim())
+                    .Where(t => !string.IsNullOrEmpty(t))
+                    .ToList();
+
                 var dto = new SetupProfileDTO
                 {
                     FullName = _txtFullName.Text?.Trim(),
                     AvatarUrl = avatarUrl?.Trim(),
                     Gender = _cboGender.SelectedItem?.ToString(),
                     DateOfBirth = _dtDob.Checked ? _dtDob.Value.Date : null,
-                    Bio = _txtBio.Text?.Trim()
+                    Bio = _txtBio.Text?.Trim(),
+                    Tags = tagsList
                 };
 
                 await _userBll.SetupProfileAsync(dto);
@@ -310,6 +337,7 @@ namespace Presentation.FormProfile
             _cboGender.Enabled = !busy;
             _dtDob.Enabled = !busy;
             _txtBio.Enabled = !busy;
+            _txtTags.Enabled = !busy;
             UseWaitCursor = busy;
         }
 

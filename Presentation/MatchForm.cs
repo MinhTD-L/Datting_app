@@ -13,6 +13,10 @@ namespace Presentation
         private readonly ChatBLL _chatBll;
 
         private ComboBox _cboLookingFor;
+        private TrackBar _tbMinAge;
+        private TrackBar _tbMaxAge;
+        private Label _lblMinAgeValue;
+        private Label _lblMaxAgeValue;
         private Label _lblStatus;
         private Button _btnStart;
         private Button _btnLeave;
@@ -91,16 +95,109 @@ namespace Presentation
             _cboLookingFor.Items.AddRange(new object[] { "male", "female", "other" });
             _cboLookingFor.SelectedIndex = 1; // default: female
 
+            var lblAgeRange = new Label
+            {
+                Text = "Trong độ tuổi:",
+                AutoSize = true,
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                ForeColor = Color.FromArgb(30, 30, 30),
+                Location = new Point(0, _cboLookingFor.Bottom + 12)
+            };
+
+            var agePanel = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.LeftToRight,
+                Location = new Point(0, lblAgeRange.Bottom + 8),
+                Width = 500,
+                Height = 50,
+                WrapContents = false,
+            };
+
+            _lblMinAgeValue = new Label
+            {
+                Text = "18",
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                ForeColor = Color.FromArgb(30, 30, 30),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Margin = new Padding(0, 8, 0, 0),
+                Width = 30
+            };
+
+            _tbMinAge = new TrackBar
+            {
+                Minimum = 16,
+                Maximum = 99,
+                Value = 18,
+                Width = 150,
+                TickStyle = TickStyle.None,
+                AutoSize = false,
+                Height = 30,
+                Margin = new Padding(5, 5, 5, 5)
+            };
+
+            var lblAgeSeparator = new Label
+            {
+                Text = "đến",
+                AutoSize = true,
+                Font = new Font("Segoe UI", 10),
+                ForeColor = Color.FromArgb(30, 30, 30),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Margin = new Padding(5, 8, 5, 8)
+            };
+
+            _lblMaxAgeValue = new Label
+            {
+                Text = "30",
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                ForeColor = Color.FromArgb(30, 30, 30),
+                TextAlign = ContentAlignment.MiddleCenter,
+                Margin = new Padding(0, 8, 0, 0),
+                Width = 30
+            };
+
+            _tbMaxAge = new TrackBar
+            {
+                Minimum = 16,
+                Maximum = 100,
+                Value = 30,
+                Width = 150,
+                TickStyle = TickStyle.None,
+                AutoSize = false,
+                Height = 30,
+                Margin = new Padding(5, 5, 5, 5)
+            };
+
+            agePanel.Controls.Add(_lblMinAgeValue);
+            agePanel.Controls.Add(_tbMinAge);
+            agePanel.Controls.Add(lblAgeSeparator);
+            agePanel.Controls.Add(_lblMaxAgeValue);
+            agePanel.Controls.Add(_tbMaxAge);
+
+            _tbMinAge.Scroll += (s, e) => {
+                if (_tbMinAge.Value > _tbMaxAge.Value)
+                {
+                    _tbMinAge.Value = _tbMaxAge.Value;
+                }
+                _lblMinAgeValue.Text = _tbMinAge.Value.ToString();
+            };
+
+            _tbMaxAge.Scroll += (s, e) => {
+                if (_tbMaxAge.Value < _tbMinAge.Value)
+                {
+                    _tbMaxAge.Value = _tbMinAge.Value;
+                }
+                _lblMaxAgeValue.Text = _tbMaxAge.Value.ToString();
+            };
+
             _lblStatus = new Label
             {
                 AutoSize = false,
                 Width = body.ClientSize.Width - 32,
-                Height = 90,
-                Location = new Point(0, _cboLookingFor.Bottom + 20),
+                Location = new Point(0, agePanel.Bottom + 10),
                 TextAlign = ContentAlignment.TopLeft,
                 Font = new Font("Segoe UI", 10),
                 ForeColor = Color.Gray,
-                Text = "Chọn giới tính và bấm “Ghép đôi”."
+                Text = "Chọn giới tính, độ tuổi và bấm “Ghép đôi”."
             };
 
             var footer = new Panel
@@ -157,6 +254,8 @@ namespace Presentation
 
             body.Controls.Add(lblLookingFor);
             body.Controls.Add(_cboLookingFor);
+            body.Controls.Add(lblAgeRange);
+            body.Controls.Add(agePanel);
             body.Controls.Add(_lblStatus);
 
             Controls.Add(body);
@@ -206,6 +305,8 @@ namespace Presentation
             _btnStart.Enabled = !searching;
             _btnLeave.Enabled = searching;
             _cboLookingFor.Enabled = !searching;
+            _tbMinAge.Enabled = !searching;
+            _tbMaxAge.Enabled = !searching;
         }
 
         private async Task StartAsync()
@@ -221,13 +322,23 @@ namespace Presentation
                 return;
             }
 
+            var minAge = _tbMinAge.Value;
+            var maxAge = _tbMaxAge.Value;
+
+            if (minAge > maxAge)
+            {
+                MessageBox.Show(this, "Độ tuổi nhỏ nhất không được lớn hơn độ tuổi lớn nhất.", "Lỗi",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
             SetSearchingState(true);
             _lblStatus.Text = "Đang kết nối...";
 
             try
             {
                 await _chatBll.EnsureConnectedAsync(SessionManager.Token);
-                await _chatBll.JoinMatchAsync(lookingFor);
+                await _chatBll.JoinMatchAsync(lookingFor, minAge, maxAge);
                 // Backend sẽ đẩy event 'waiting' hoặc 'matched'
                 _lblStatus.Text = "Đang tìm đối tác...";
             }
@@ -283,6 +394,8 @@ namespace Presentation
                 _btnStart.Enabled = false;
                 _btnLeave.Enabled = false;
                 _cboLookingFor.Enabled = false;
+                _tbMinAge.Enabled = false;
+                _tbMaxAge.Enabled = false;
                 _lblStatus.Text = "Đã ghép đôi. Đang mở chat...";
 
                 try
@@ -326,4 +439,3 @@ namespace Presentation
         }
     }
 }
-

@@ -48,6 +48,7 @@ namespace DataTransferObject
         public string Bio { get; set; }
         public string Gender { get; set; }
         public DateTime? DateOfBirth { get; set; }
+        public List<string> Tags { get; set; }
     }
 
     public class SetupProfileRequestDTO
@@ -67,6 +68,9 @@ namespace DataTransferObject
 
         [JsonPropertyName("bio")]
         public string Bio { get; set; }
+
+        [JsonPropertyName("tags")]
+        public List<string> Tags { get; set; }
     }
 
     public class SetupProfileResponseDTO
@@ -91,6 +95,9 @@ namespace DataTransferObject
 
         [JsonPropertyName("avatar_url")]
         public string AvatarUrl { get; set; }
+
+        [JsonPropertyName("tags")]
+        public List<string> Tags { get; set; }
     }
     public class UserProfileDTO
     {
@@ -101,6 +108,7 @@ namespace DataTransferObject
         public string Bio { get; set; }
         public string Gender { get; set; }
         public DateTime? DateOfBirth { get; set; }
+        public List<string> Tags { get; set; }
     }
 
     public class GetMyProfileResponseDTO
@@ -134,6 +142,9 @@ namespace DataTransferObject
 
         [JsonPropertyName("bio")]
         public string Bio { get; set; }
+
+        [JsonPropertyName("tags")]
+        public List<string> Tags { get; set; }
     }
     public class ChangePasswordDTO
     {

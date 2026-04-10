@@ -50,7 +50,8 @@ namespace BusinessLogic
                 AvatarUrl = u?.AvatarUrl,
                 Gender = u?.Gender,
                 DateOfBirth = u?.DateOfBirth,
-                Bio = u?.Bio
+                Bio = u?.Bio,
+                Tags = u?.Tags
             };
         }
 
@@ -67,7 +68,8 @@ namespace BusinessLogic
                 AvatarUrl = u?.AvatarUrl,
                 Gender = u?.Gender,
                 DateOfBirth = u?.DateOfBirth,
-                Bio = u?.Bio
+                Bio = u?.Bio,
+                Tags = u?.Tags
             };
         }
 
@@ -85,7 +87,8 @@ namespace BusinessLogic
                 AvatarUrl = dto.AvatarUrl?.Trim(),
                 Gender = dto.Gender?.Trim(),
                 DateOfBirth = dob,
-                Bio = dto.Bio?.Trim()
+                Bio = dto.Bio?.Trim(),
+                Tags = dto.Tags
             });
 
             var u = res?.User;
@@ -94,7 +97,8 @@ namespace BusinessLogic
                 Id = u?.Id,
                 UserName = u?.Username,
                 FullName = u?.FullName,
-                AvatarUrl = u?.AvatarUrl
+                AvatarUrl = u?.AvatarUrl,
+                Tags = u?.Tags
             };
         }
 
