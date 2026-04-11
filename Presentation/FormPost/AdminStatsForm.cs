@@ -2,11 +2,18 @@ using BusinessLogic;
 using DataTransferObject;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Drawing;
 using System.Globalization;
+using System.Text;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using QuestPDF.Fluent;
+using System.Diagnostics;
+using Presentation.Reports;
 using System.Windows.Forms.DataVisualization.Charting;
+// Thêm using cho Crystal Reports ở file StatsReportViewerForm.cs
 
 namespace Presentation.FormPost
 {
@@ -30,6 +37,10 @@ namespace Presentation.FormPost
         public AdminStatsForm()
         {
             _adminBll = BusinessLogic.AppServices.AdminBll;
+
+            // Cấu hình bản quyền cho thư viện QuestPDF (sử dụng bản miễn phí Community)
+            QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
             Text = "Thống kê hệ thống";
             Size = new Size(1000, 700);
             StartPosition = FormStartPosition.CenterScreen;
@@ -41,6 +52,30 @@ namespace Presentation.FormPost
 
         private void BuildUI()
         {
+            // Footer panel cho các nút xuất báo cáo
+            var pnlFooter = new Panel { Dock = DockStyle.Bottom, Height = 60, Padding = new Padding(10), BackColor = Color.WhiteSmoke };
+            var line = new Panel { Dock = DockStyle.Top, Height = 1, BackColor = Color.LightGray };
+            pnlFooter.Controls.Add(line);
+
+            var btnExportCsv = new Button { Text = "Xuất CSV", Width = 120, Height = 35, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(10, 130, 60), ForeColor = Color.White };
+            btnExportCsv.FlatAppearance.BorderSize = 0;
+            btnExportCsv.Cursor = Cursors.Hand;
+            btnExportCsv.Click += async (_, __) => await ExportAllToCsvAsync();
+
+            var btnExportPdf = new Button { Text = "Xuất PDF (Đẹp)", Width = 160, Height = 35, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(180, 50, 50), ForeColor = Color.White };
+            btnExportPdf.FlatAppearance.BorderSize = 0;
+            btnExportPdf.Cursor = Cursors.Hand;
+            btnExportPdf.Click += async (_, __) => await ExportToPdfReportAsync();
+
+            pnlFooter.Controls.AddRange(new Control[] { btnExportCsv, btnExportPdf });
+            btnExportPdf.BringToFront();
+            btnExportCsv.BringToFront();
+
+            pnlFooter.Resize += (s, e) => {
+                btnExportPdf.Location = new Point(pnlFooter.ClientSize.Width - btnExportPdf.Width - 15, (pnlFooter.ClientSize.Height - btnExportPdf.Height) / 2);
+                btnExportCsv.Location = new Point(btnExportPdf.Left - btnExportCsv.Width - 10, (pnlFooter.ClientSize.Height - btnExportCsv.Height) / 2);
+            };
+
             _tabControl = new TabControl { Dock = DockStyle.Fill, Font = new Font("Segoe UI", 10) };
 
             var tabOverview = new TabPage("Tổng quan");
@@ -56,6 +91,7 @@ namespace Presentation.FormPost
             _tabControl.TabPages.Add(tabTags);
 
             Controls.Add(_tabControl);
+            Controls.Add(pnlFooter);
         }
 
         private void BuildOverviewTab(TabPage parent)
@@ -116,7 +152,15 @@ namespace Presentation.FormPost
                 BackgroundColor = Color.White,
                 BorderStyle = BorderStyle.None
             };
+
+            var pnlTagsTop = new Panel { Dock = DockStyle.Top, Height = 50, Padding = new Padding(10) };
+            var btnExportTags = new Button { Text = "Xuất CSV", Location = new Point(10, 9), Width = 100, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(20, 150, 80), ForeColor = Color.White };
+            btnExportTags.FlatAppearance.BorderSize = 0;
+            btnExportTags.Click += (_, __) => ExportDataGridViewToCsv(_dgvTags, "Popular_Tags");
+            pnlTagsTop.Controls.Add(btnExportTags);
+
             parent.Controls.Add(_dgvTags);
+            parent.Controls.Add(pnlTagsTop);
         }
 
         private async Task LoadAllDataAsync()
@@ -193,6 +237,231 @@ namespace Presentation.FormPost
                 if (_dgvTags.Columns["AvgLikes"] != null) { _dgvTags.Columns["AvgLikes"].HeaderText = "TB Thích/Bài"; _dgvTags.Columns["AvgLikes"].DefaultCellStyle.Format = "N2"; }
             }
             catch (Exception ex) { MessageBox.Show("Lỗi tải tags: " + ex.Message); }
+        }
+
+        private void ExportDataGridViewToCsv(DataGridView dgv, string defaultFileName)
+        {
+            if (dgv.Rows.Count == 0)
+            {
+                MessageBox.Show("Không có dữ liệu để xuất.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            using (var sfd = new SaveFileDialog())
+            {
+                sfd.Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*";
+                sfd.FileName = $"{defaultFileName}_{DateTime.Now:yyyyMMdd_HHmm}.csv";
+                if (sfd.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        var sb = new System.Text.StringBuilder();
+
+                        var headers = dgv.Columns.Cast<DataGridViewColumn>();
+                        sb.AppendLine(string.Join(",", headers.Select(column => EscapeCsvField(column.HeaderText)).ToArray()));
+
+                        foreach (DataGridViewRow row in dgv.Rows)
+                        {
+                            var cells = row.Cells.Cast<DataGridViewCell>();
+                            sb.AppendLine(string.Join(",", cells.Select(cell => EscapeCsvField(cell.Value?.ToString() ?? "")).ToArray()));
+                        }
+
+                        System.IO.File.WriteAllText(sfd.FileName, sb.ToString(), System.Text.Encoding.UTF8);
+                        MessageBox.Show("Xuất dữ liệu thành công!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Lỗi khi xuất file: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+        }
+
+        private string EscapeCsvField(string field)
+        {
+            if (string.IsNullOrEmpty(field)) return "";
+            if (field.Contains(",") || field.Contains("\"") || field.Contains("\n"))
+            {
+                return $"\"{field.Replace("\"", "\"\"")}\"";
+            }
+            return field;
+        }
+
+        private async Task ExportAllToCsvAsync()
+        {
+            using (var sfd = new SaveFileDialog())
+            {
+                sfd.Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*";
+                sfd.FileName = $"LoveConnect_Report_{DateTime.Now:yyyyMMdd_HHmm}.csv";
+                if (sfd.ShowDialog(this) != DialogResult.OK)
+                {
+                    return;
+                }
+
+                this.Cursor = Cursors.WaitCursor;
+                try
+                {
+                    var sb = new StringBuilder();
+                    sb.AppendLine($"Báo cáo Tổng hợp LoveConnect");
+                    sb.AppendLine($"Ngày xuất: {DateTime.Now:dd/MM/yyyy HH:mm:ss}");
+                    sb.AppendLine();
+
+                    // --- 1. Overview Section ---
+                    sb.AppendLine("--- TỔNG QUAN ---");
+                    sb.AppendLine("Mục,Giá trị");
+                    try
+                    {
+                        var stats = await _adminBll.GetDashboardStatsAsync();
+                        sb.AppendLine($"Tổng số người dùng,{stats.Users.Total}");
+                        sb.AppendLine($"Người dùng mới hôm nay,{stats.Users.NewToday}");
+                        sb.AppendLine($"Người dùng mới 7 ngày qua,{stats.Users.NewLast7Days}");
+                        sb.AppendLine($"Người dùng trực tuyến,{stats.Realtime.OnlineUsers}");
+                        sb.AppendLine($"Tổng bài đăng,{stats.Engagement.Posts}");
+                        sb.AppendLine($"Tổng lượt thích,{stats.Engagement.Likes}");
+                        sb.AppendLine($"Tổng bình luận,{stats.Engagement.Comments}");
+                        sb.AppendLine($"Tổng tin nhắn,{stats.Engagement.Messages}");
+                        sb.AppendLine($"Tổng cuộc gọi,{stats.Engagement.Calls}");
+                        sb.AppendLine($"Tổng số bạn bè,{stats.Social.Friendships}");
+                        sb.AppendLine($"Yêu cầu kết bạn đang chờ,{stats.Social.PendingFriendRequests}");
+                        sb.AppendLine($"Ghép đôi thành công,{stats.Matching.SuccessfulPairs}");
+                        sb.AppendLine($"Người dùng trong hàng chờ,{stats.Matching.UsersInQueue}");
+                        sb.AppendLine($"Tổng số báo cáo,{stats.Moderation.TotalReports}");
+                        sb.AppendLine($"Báo cáo chờ xử lý,{(stats.Moderation.ByStatus.TryGetValue("pending", out var p) ? p : 0)}");
+                        sb.AppendLine($"Báo cáo đã duyệt,{(stats.Moderation.ByStatus.TryGetValue("approved", out var a) ? a : 0)}");
+                        sb.AppendLine($"Báo cáo đã từ chối,{(stats.Moderation.ByStatus.TryGetValue("rejected", out var r) ? r : 0)}");
+                    }
+                    catch (Exception ex) { sb.AppendLine($"Lỗi tải dữ liệu tổng quan,{EscapeCsvField(ex.Message)}"); }
+                    sb.AppendLine();
+
+                    // --- 2. Popular Tags Section ---
+                    sb.AppendLine("--- TAGS PHỔ BIẾN ---");
+                    sb.AppendLine("Tag,Tổng bài đăng,Tổng lượt thích,TB Thích/Bài");
+                    try
+                    {
+                        var tagsData = await _adminBll.GetPopularTagsAsync();
+                        if (tagsData?.Data != null)
+                        {
+                            foreach (var tag in tagsData.Data)
+                            {
+                                sb.AppendLine($"{EscapeCsvField(tag.Tag)},{tag.TotalPosts},{tag.TotalLikes},{tag.AvgLikes:N2}");
+                            }
+                        }
+                    }
+                    catch (Exception ex) { sb.AppendLine($"Lỗi tải dữ liệu tags,{EscapeCsvField(ex.Message)}"); }
+                    sb.AppendLine();
+
+                    // --- 3. Time Series Section ---
+                    var timeSeriesMetrics = _cboMetric.Items.Cast<KeyValuePair<string, string>>();
+                    var endDate = DateTime.Now;
+                    var startDate = endDate.AddDays(-29);
+
+                    foreach (var metric in timeSeriesMetrics)
+                    {
+                        sb.AppendLine($"--- BIỂU ĐỒ: {metric.Key} (từ {startDate:dd/MM/yyyy} đến {endDate:dd/MM/yyyy}) ---");
+                        sb.AppendLine("Ngày,Số lượng");
+                        try
+                        {
+                            var timeSeriesData = await _adminBll.GetTimeSeriesStatsAsync(metric.Value, "daily", startDate, endDate);
+                            if (timeSeriesData?.Data != null)
+                            {
+                                foreach (var point in timeSeriesData.Data)
+                                {
+                                    if (DateTime.TryParse(point.Date, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var date))
+                                        sb.AppendLine($"{date:yyyy-MM-dd},{point.Count}");
+                                }
+                            }
+                        }
+                        catch (Exception ex) { sb.AppendLine($"Lỗi tải dữ liệu biểu đồ,{EscapeCsvField(ex.Message)}"); }
+                        sb.AppendLine();
+                    }
+
+                    System.IO.File.WriteAllText(sfd.FileName, sb.ToString(), Encoding.UTF8);
+                    MessageBox.Show("Xuất báo cáo tổng hợp thành công!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex) { MessageBox.Show("Lỗi khi xuất file: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+                finally { this.Cursor = Cursors.Default; }
+            }
+        }
+
+        private async Task ExportToPdfReportAsync()
+        {
+            using (var sfd = new SaveFileDialog())
+            {
+                sfd.Filter = "PDF files (*.pdf)|*.pdf|All files (*.*)|*.*";
+                sfd.FileName = $"LoveConnect_Stats_Report_{DateTime.Now:yyyyMMdd}.pdf";
+                if (sfd.ShowDialog(this) != DialogResult.OK)
+                {
+                    return;
+                }
+
+                this.Cursor = Cursors.WaitCursor;
+                try
+                {
+                    // 1. Chuẩn bị DTO để chứa tất cả dữ liệu báo cáo
+                    var reportData = new FullStatsReportDTO
+                    {
+                        ReportDate = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss"),
+                        OverviewStats = new List<FullStatsReportDTO.OverviewStatItem>(),
+                        PopularTags = new List<PopularTagStatDTO>(),
+                        TimeSeries = new Dictionary<string, List<TimeSeriesDataPointDTO>>()
+                    };
+
+                    // 2. Lấy dữ liệu tổng quan
+                    try
+                    {
+                        var stats = await _adminBll.GetDashboardStatsAsync();
+                        reportData.OverviewStats.Add(new FullStatsReportDTO.OverviewStatItem("Tổng số người dùng", stats.Users.Total));
+                        reportData.OverviewStats.Add(new FullStatsReportDTO.OverviewStatItem("Người dùng mới hôm nay", stats.Users.NewToday));
+                        reportData.OverviewStats.Add(new FullStatsReportDTO.OverviewStatItem("Người dùng mới 7 ngày qua", stats.Users.NewLast7Days));
+                        reportData.OverviewStats.Add(new FullStatsReportDTO.OverviewStatItem("Tổng bài đăng", stats.Engagement.Posts));
+                        reportData.OverviewStats.Add(new FullStatsReportDTO.OverviewStatItem("Tổng lượt thích", stats.Engagement.Likes));
+                        reportData.OverviewStats.Add(new FullStatsReportDTO.OverviewStatItem("Ghép đôi thành công", stats.Matching.SuccessfulPairs));
+                        reportData.OverviewStats.Add(new FullStatsReportDTO.OverviewStatItem("Tổng số báo cáo", stats.Moderation.TotalReports));
+                        reportData.OverviewStats.Add(new FullStatsReportDTO.OverviewStatItem("Báo cáo chờ xử lý", (stats.Moderation.ByStatus.TryGetValue("pending", out var p) ? p : 0)));
+                    }
+                    catch { /* Bỏ qua nếu lỗi, báo cáo sẽ hiển thị phần này trống */ }
+
+                    // 3. Lấy dữ liệu tags phổ biến
+                    try
+                    {
+                        var tagsData = await _adminBll.GetPopularTagsAsync();
+                        if (tagsData?.Data != null)
+                        {
+                            reportData.PopularTags.AddRange(tagsData.Data);
+                        }
+                    }
+                    catch { /* Bỏ qua nếu lỗi */ }
+
+                    // 4. Lấy dữ liệu biểu đồ
+                    var timeSeriesMetrics = _cboMetric.Items.Cast<KeyValuePair<string, string>>();
+                    var endDate = DateTime.Now;
+                    var startDate = endDate.AddDays(-29);
+                    foreach (var metric in timeSeriesMetrics)
+                    {
+                        try
+                        {
+                            var timeSeriesData = await _adminBll.GetTimeSeriesStatsAsync(metric.Value, "daily", startDate, endDate);
+                            if (timeSeriesData?.Data != null)
+                            {
+                                reportData.TimeSeries[metric.Key] = timeSeriesData.Data;
+                            }
+                        }
+                        catch { /* Bỏ qua nếu lỗi */ }
+                    }
+
+                    // 5. Tạo và xuất file PDF bằng QuestPDF
+                    var document = new StatsQuestPdfReport(reportData);
+                    document.GeneratePdf(sfd.FileName);
+
+                    MessageBox.Show($"Báo cáo đã được lưu thành công tại:\n{sfd.FileName}", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                    // Tùy chọn: Tự động mở file PDF sau khi xuất
+                    var processStartInfo = new ProcessStartInfo(sfd.FileName) { UseShellExecute = true };
+                    Process.Start(processStartInfo);
+                }
+                catch (Exception ex) { MessageBox.Show("Lỗi khi tạo báo cáo PDF: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+                finally { this.Cursor = Cursors.Default; }
+            }
         }
     }
 }

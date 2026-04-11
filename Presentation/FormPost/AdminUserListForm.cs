@@ -8,6 +8,15 @@ using System.Windows.Forms;
 using System.Collections.Generic;
 using Presentation.FormProfile;
 using System.Net.Http;
+using System.Text;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
+using System.Diagnostics;
+
+using Color = System.Drawing.Color;
+using Size = System.Drawing.Size;
+using Image = System.Drawing.Image;
 
 namespace Presentation.FormPost
 {
@@ -23,6 +32,10 @@ namespace Presentation.FormPost
         public AdminUserListForm()
         {
             _adminBll = BusinessLogic.AppServices.AdminBll;
+
+            // Cấu hình bản quyền cho thư viện QuestPDF (sử dụng bản miễn phí Community)
+            QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
             Text = "Quản lý Người dùng (Admin)";
             Size = new Size(900, 600);
             StartPosition = FormStartPosition.CenterScreen;
@@ -41,16 +54,41 @@ namespace Presentation.FormPost
             btnBack.Click += (_, __) => Close();
             btnBack.Cursor = Cursors.Hand;
 
-            _btnRefresh = new Button { Text = "Tải lại", Location = new Point(130, 15), Width = 100, Height = 30, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(255, 30, 100), ForeColor = Color.White };
+            _btnRefresh = new Button { Text = "Tải lại", Location = new Point(130, 15), Width = 80, Height = 30, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(255, 30, 100), ForeColor = Color.White };
             _btnRefresh.FlatAppearance.BorderSize = 0;
             _btnRefresh.Click += async (_, __) => await LoadDataAsync(true);
             _btnRefresh.Cursor = Cursors.Hand;
 
-            var lblTitle = new Label { Text = "Danh sách Người dùng", Font = new Font("Segoe UI", 14, FontStyle.Bold), Location = new Point(250, 15), AutoSize = true };
+            var lblTitle = new Label { Text = "Danh sách Người dùng", Font = new Font("Segoe UI", 14, FontStyle.Bold), Location = new Point(340, 15), AutoSize = true };
 
             pnlTop.Controls.Add(btnBack);
             pnlTop.Controls.Add(_btnRefresh);
             pnlTop.Controls.Add(lblTitle);
+
+            // Footer
+            var pnlFooter = new Panel { Dock = DockStyle.Bottom, Height = 60, Padding = new Padding(10), BackColor = Color.WhiteSmoke };
+            var line = new Panel { Dock = DockStyle.Top, Height = 1, BackColor = Color.LightGray };
+            pnlFooter.Controls.Add(line);
+
+            var btnExport = new Button { Text = "Xuất CSV", Width = 120, Height = 35, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(10, 130, 60), ForeColor = Color.White };
+            btnExport.FlatAppearance.BorderSize = 0;
+            btnExport.Click += (_, __) => ExportUsersToCsv();
+            btnExport.Cursor = Cursors.Hand;
+
+            var btnExportPdf = new Button { Text = "Xuất PDF", Width = 120, Height = 35, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(180, 50, 50), ForeColor = Color.White };
+            btnExportPdf.FlatAppearance.BorderSize = 0;
+            btnExportPdf.Click += (_, __) => ExportUsersToPdf();
+            btnExportPdf.Cursor = Cursors.Hand;
+
+            pnlFooter.Controls.AddRange(new Control[] { btnExport, btnExportPdf });
+            btnExportPdf.BringToFront();
+            btnExport.BringToFront();
+
+            pnlFooter.Resize += (s, e) =>
+            {
+                btnExportPdf.Location = new Point(pnlFooter.ClientSize.Width - btnExportPdf.Width - 15, (pnlFooter.ClientSize.Height - btnExportPdf.Height) / 2);
+                btnExport.Location = new Point(btnExportPdf.Left - btnExport.Width - 10, (pnlFooter.ClientSize.Height - btnExport.Height) / 2);
+            };
 
             _pnlContent = new FlowLayoutPanel
             {
@@ -63,6 +101,7 @@ namespace Presentation.FormPost
             _pnlContent.SizeChanged += (_, __) => CenterCards();
 
             Controls.Add(_pnlContent);
+            Controls.Add(pnlFooter);
             Controls.Add(pnlTop);
         }
 
@@ -176,6 +215,116 @@ namespace Presentation.FormPost
             void UpdateRegion() { if (pictureBox.IsDisposed) return; var diameter = Math.Min(pictureBox.Width, pictureBox.Height); var rect = new Rectangle(0, 0, diameter, diameter); using var path = new GraphicsPath(); path.AddEllipse(rect); pictureBox.Region = new Region(path); }
             pictureBox.SizeChanged += (_, __) => UpdateRegion();
             UpdateRegion();
+        }
+
+        private void ExportUsersToCsv()
+        {
+            if (_cachedUsers == null || _cachedUsers.Count == 0)
+            {
+                MessageBox.Show("Không có dữ liệu người dùng để xuất.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            using (var sfd = new SaveFileDialog())
+            {
+                sfd.Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*";
+                sfd.FileName = $"User_List_{DateTime.Now:yyyyMMdd_HHmm}.csv";
+                if (sfd.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        var sb = new StringBuilder();
+                        sb.AppendLine("ID,Username,Email,Status,Role,Restrictions");
+
+                        foreach (var user in _cachedUsers)
+                        {
+                            var features = string.Join(";", user.GetRestrictionFeatures());
+                            var line = $"{user.Id},{EscapeCsvField(user.Username)},{EscapeCsvField(user.Email)},{user.Status},{user.Role},{EscapeCsvField(features)}";
+                            sb.AppendLine(line);
+                        }
+
+                        System.IO.File.WriteAllText(sfd.FileName, sb.ToString(), Encoding.UTF8);
+                        MessageBox.Show("Xuất dữ liệu thành công!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Lỗi khi xuất file: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+        }
+
+        private string EscapeCsvField(string field)
+        {
+            if (string.IsNullOrEmpty(field)) return "";
+            if (field.Contains(",") || field.Contains("\"") || field.Contains("\n"))
+            {
+                return $"\"{field.Replace("\"", "\"\"")}\"";
+            }
+            return field;
+        }
+
+        private void ExportUsersToPdf()
+        {
+            if (_cachedUsers == null || _cachedUsers.Count == 0)
+            {
+                MessageBox.Show("Không có dữ liệu người dùng để xuất.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            using (var sfd = new SaveFileDialog())
+            {
+                sfd.Filter = "PDF files (*.pdf)|*.pdf|All files (*.*)|*.*";
+                sfd.FileName = $"User_List_{DateTime.Now:yyyyMMdd_HHmm}.pdf";
+                if (sfd.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        Document.Create(container =>
+                        {
+                            container.Page(page =>
+                            {
+                                page.Margin(30);
+                                page.Header().Text(text => text.Span("Danh sách Người dùng").Style(TextStyle.Default.FontSize(20).SemiBold().FontColor(Colors.Blue.Medium)));
+                                page.Content().PaddingVertical(10).Table(table =>
+                                {
+                                    table.ColumnsDefinition(columns =>
+                                    {
+                                        columns.ConstantColumn(80); // ID
+                                        columns.RelativeColumn();   // Username
+                                        columns.RelativeColumn();   // Email
+                                        columns.ConstantColumn(70); // Status
+                                        columns.ConstantColumn(70); // Role
+                                    });
+
+                                    table.Header(header =>
+                                    {
+                                        header.Cell().Background(Colors.Grey.Lighten3).Padding(5).Text("ID");
+                                        header.Cell().Background(Colors.Grey.Lighten3).Padding(5).Text("Username");
+                                        header.Cell().Background(Colors.Grey.Lighten3).Padding(5).Text("Email");
+                                        header.Cell().Background(Colors.Grey.Lighten3).Padding(5).Text("Status");
+                                        header.Cell().Background(Colors.Grey.Lighten3).Padding(5).Text("Role");
+                                    });
+
+                                    foreach (var user in _cachedUsers)
+                                    {
+                                        table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(user.Id.Length > 8 ? user.Id.Substring(0, 8) + "..." : user.Id);
+                                        table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(user.Username ?? "");
+                                        table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(user.Email ?? "");
+                                        table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(user.Status ?? "");
+                                        table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(user.Role ?? "");
+                                    }
+                                });
+                                page.Footer().AlignCenter().Text(text => { text.CurrentPageNumber(); text.Span(" / "); text.TotalPages(); });
+                            });
+                        }).GeneratePdf(sfd.FileName);
+
+                        MessageBox.Show("Xuất PDF thành công!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        Process.Start(new ProcessStartInfo(sfd.FileName) { UseShellExecute = true });
+                    }
+                    catch (Exception ex) { MessageBox.Show("Lỗi khi tạo báo cáo PDF: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+                }
+            }
         }
     }
 }

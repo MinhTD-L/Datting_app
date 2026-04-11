@@ -26,6 +26,7 @@
   <ItemGroup>
     <PackageReference Include="HIC.System.Windows.Forms.DataVisualization" Version="1.0.1" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3856.49" />
+    <PackageReference Include="QuestPDF" Version="2026.2.4" />
   </ItemGroup>
 
   <ItemGroup>

@@ -8,6 +8,15 @@ using System.Windows.Forms;
 using System.Collections.Generic;
 using Presentation;
 using Presentation.FormProfile;
+using System.Text;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
+using System.Diagnostics;
+
+using Color = System.Drawing.Color;
+using Size = System.Drawing.Size;
+using Image = System.Drawing.Image;
 
 namespace Presentation.FormPost
 {
@@ -23,6 +32,10 @@ namespace Presentation.FormPost
         {
             _reportBll = new ReportBLL();
             _chatBll = BusinessLogic.AppServices.ChatBll;
+
+            // Cấu hình bản quyền cho thư viện QuestPDF (sử dụng bản miễn phí Community)
+            QuestPDF.Settings.License = QuestPDF.Infrastructure.LicenseType.Community;
+
             Text = "Quản lý Báo cáo (Admin)";
             Size = new Size(900, 600);
             StartPosition = FormStartPosition.CenterScreen;
@@ -52,6 +65,31 @@ namespace Presentation.FormPost
             pnlTop.Controls.Add(_btnRefresh);
             pnlTop.Controls.Add(lblTitle);
 
+            // Footer
+            var pnlFooter = new Panel { Dock = DockStyle.Bottom, Height = 60, Padding = new Padding(10), BackColor = Color.WhiteSmoke };
+            var line = new Panel { Dock = DockStyle.Top, Height = 1, BackColor = Color.LightGray };
+            pnlFooter.Controls.Add(line);
+
+            var btnExport = new Button { Text = "Xuất CSV", Width = 120, Height = 35, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(10, 130, 60), ForeColor = Color.White };
+            btnExport.FlatAppearance.BorderSize = 0;
+            btnExport.Click += (_, __) => ExportReportsToCsv();
+            btnExport.Cursor = Cursors.Hand;
+
+            var btnExportPdf = new Button { Text = "Xuất PDF", Width = 120, Height = 35, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(180, 50, 50), ForeColor = Color.White };
+            btnExportPdf.FlatAppearance.BorderSize = 0;
+            btnExportPdf.Click += (_, __) => ExportReportsToPdf();
+            btnExportPdf.Cursor = Cursors.Hand;
+
+            pnlFooter.Controls.AddRange(new Control[] { btnExport, btnExportPdf });
+            btnExportPdf.BringToFront();
+            btnExport.BringToFront();
+
+            pnlFooter.Resize += (s, e) =>
+            {
+                btnExportPdf.Location = new Point(pnlFooter.ClientSize.Width - btnExportPdf.Width - 15, (pnlFooter.ClientSize.Height - btnExportPdf.Height) / 2);
+                btnExport.Location = new Point(btnExportPdf.Left - btnExport.Width - 10, (pnlFooter.ClientSize.Height - btnExport.Height) / 2);
+            };
+
             _pnlContent = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -63,6 +101,7 @@ namespace Presentation.FormPost
             _pnlContent.SizeChanged += (_, __) => CenterCards();
 
             Controls.Add(_pnlContent);
+            Controls.Add(pnlFooter);
             Controls.Add(pnlTop);
         }
 
@@ -190,6 +229,119 @@ namespace Presentation.FormPost
             card.Controls.Add(btnReview);
 
             return card;
+        }
+
+        private void ExportReportsToCsv()
+        {
+            if (_cachedReports == null || _cachedReports.Count == 0)
+            {
+                MessageBox.Show("Không có dữ liệu báo cáo để xuất.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            using (var sfd = new SaveFileDialog())
+            {
+                sfd.Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*";
+                sfd.FileName = $"Report_List_{DateTime.Now:yyyyMMdd_HHmm}.csv";
+                if (sfd.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        var sb = new StringBuilder();
+                        sb.AppendLine("ID,ReporterID,TargetUserID,TargetPostID,Reason,Description,Status,ResolveNote,CreatedAt");
+
+                        foreach (var r in _cachedReports)
+                        {
+                            var line = $"{r.ReportID},{r.ReporterID},{r.TargetUserID},{r.TargetPostID},{EscapeCsvField(r.Reason)},{EscapeCsvField(r.Description)},{r.Status},{EscapeCsvField(r.ResolveNote)},{r.CreatedAt.ToLocalTime():yyyy-MM-dd HH:mm:ss}";
+                            sb.AppendLine(line);
+                        }
+
+                        System.IO.File.WriteAllText(sfd.FileName, sb.ToString(), Encoding.UTF8);
+                        MessageBox.Show("Xuất dữ liệu thành công!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Lỗi khi xuất file: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+        }
+
+        private string EscapeCsvField(string field)
+        {
+            if (string.IsNullOrEmpty(field)) return "";
+            if (field.Contains(",") || field.Contains("\"") || field.Contains("\n"))
+            {
+                return $"\"{field.Replace("\"", "\"\"")}\"";
+            }
+            return field;
+        }
+
+        private void ExportReportsToPdf()
+        {
+            if (_cachedReports == null || _cachedReports.Count == 0)
+            {
+                MessageBox.Show("Không có dữ liệu báo cáo để xuất.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            using (var sfd = new SaveFileDialog())
+            {
+                sfd.Filter = "PDF files (*.pdf)|*.pdf|All files (*.*)|*.*";
+                sfd.FileName = $"Report_List_{DateTime.Now:yyyyMMdd_HHmm}.pdf";
+                if (sfd.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        Document.Create(container =>
+                        {
+                            container.Page(page =>
+                            {
+                                page.Margin(30);
+                                page.Header().Text(text => text.Span("Danh sách Báo cáo").Style(TextStyle.Default.FontSize(20).SemiBold().FontColor(Colors.Blue.Medium)));
+                                page.Content().PaddingVertical(10).Table(table =>
+                                {
+                                    table.ColumnsDefinition(columns =>
+                                    {
+                                        columns.ConstantColumn(80); // Loại
+                                        columns.RelativeColumn();   // Target ID
+                                        columns.RelativeColumn();   // Lý do
+                                        columns.ConstantColumn(80); // Trạng thái
+                                        columns.ConstantColumn(100); // Ngày
+                                    });
+
+                                    table.Header(header =>
+                                    {
+                                        header.Cell().Background(Colors.Grey.Lighten3).Padding(5).Text("Loại");
+                                        header.Cell().Background(Colors.Grey.Lighten3).Padding(5).Text("Target ID");
+                                        header.Cell().Background(Colors.Grey.Lighten3).Padding(5).Text("Lý do");
+                                        header.Cell().Background(Colors.Grey.Lighten3).Padding(5).Text("Trạng thái");
+                                        header.Cell().Background(Colors.Grey.Lighten3).Padding(5).Text("Ngày");
+                                    });
+
+                                    foreach (var r in _cachedReports)
+                                    {
+                                        var type = !string.IsNullOrWhiteSpace(r.TargetPostID) ? "Bài đăng" : (!string.IsNullOrWhiteSpace(r.TargetUserID) ? "Người dùng" : "Khác");
+                                        var targetId = !string.IsNullOrWhiteSpace(r.TargetPostID) ? r.TargetPostID : r.TargetUserID;
+                                        targetId = targetId?.Length > 8 ? targetId.Substring(0, 8) + "..." : targetId;
+
+                                        table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(type);
+                                        table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(targetId ?? "");
+                                        table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(r.Reason ?? "");
+                                        table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(r.Status ?? "");
+                                        table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(r.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm"));
+                                    }
+                                });
+                                page.Footer().AlignCenter().Text(text => { text.CurrentPageNumber(); text.Span(" / "); text.TotalPages(); });
+                            });
+                        }).GeneratePdf(sfd.FileName);
+
+                        MessageBox.Show("Xuất PDF thành công!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        Process.Start(new ProcessStartInfo(sfd.FileName) { UseShellExecute = true });
+                    }
+                    catch (Exception ex) { MessageBox.Show("Lỗi khi tạo báo cáo PDF: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error); }
+                }
+            }
         }
     }
 
