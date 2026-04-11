@@ -850,46 +850,15 @@ namespace Presentation.FormChat
 
             _ = PostToJsAsync(new { type = "end" });
 
-            void PostToUi(Action action)
-            {
-                if (action == null) return;
-                if (IsDisposed) return;
-
-                var ctx = _uiContext;
-                if (ctx != null)
-                {
-                    try
-                    {
-                        ctx.Post(_ =>
-                        {
-                            if (IsDisposed) return;
-                            try { action(); } catch { }
-                        }, null);
-                    }
-                    catch
-                    {
-                        // Ignore: form may be tearing down.
-                    }
-                }
-                else
-                {
-                    // Fallback: works only when the form has a handle.
-                    if (IsHandleCreated)
-                    {
-                        try { BeginInvoke(action); } catch { }
-                    }
-                }
-            }
-
             PostToUi(() =>
             {
+                if (IsDisposed) return;
                 _timer.Stop();
                 _isCallActive = false;
                 _lblStatus.Text = "Cuộc gọi đã kết thúc";
                 _btnEnd.Enabled = false;
+                Close();
             });
-
-            _ = Task.Delay(1500).ContinueWith(_ => PostToUi(Close));
         }
 
         private async void BtnAccept_Click(object sender, EventArgs e)

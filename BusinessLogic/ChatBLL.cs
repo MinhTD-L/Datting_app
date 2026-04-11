@@ -324,7 +324,7 @@ namespace BusinessLogic
                 var type = typeEl.GetString() ?? "";
 
                 // Theo dõi toàn bộ dữ liệu gọi điện trả về từ BE
-                if (type is "offer" or "answer" or "ice-candidate" or "ice_candidate" or "call_created" or "call_end")
+                if (type is "offer" or "answer" or "ice-candidate" or "ice_candidate" or "call_created" or "call_end" or "end")
                 {
                     LogToFile($"[WS IN] {json}");
                 }
@@ -474,6 +474,7 @@ namespace BusinessLogic
                         break;
                     }
                     case "call_end":
+                    case "end": // Xử lý "end" như là một alias của "call_end" để tăng tính tương thích.
                     {
                         var msgId = doc.RootElement.TryGetProperty("message_id", out var elMsgId) ? elMsgId.GetString() : "";
                         var duration = doc.RootElement.TryGetProperty("duration", out var elDur) && elDur.TryGetInt32(out var d) ? d : 0;
