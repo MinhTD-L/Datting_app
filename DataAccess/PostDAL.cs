@@ -265,7 +265,7 @@ namespace DataAccess
             if (string.IsNullOrWhiteSpace(postId))
                 throw new ArgumentException("postId is required.", nameof(postId));
 
-            return await _api.DeleteAsync<DeletePostResponseDTO>($"interact/user/post/{postId}");
+            return await _api.DeleteAsync<DeletePostResponseDTO>($"admin/posts/{postId}");
         }
 
         public async Task<APIresponseDTO> LikePost(LikePostDTO dto)

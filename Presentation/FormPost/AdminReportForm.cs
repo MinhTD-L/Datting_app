@@ -6,8 +6,10 @@ using System.Drawing.Drawing2D;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Collections.Generic;
+using Presentation;
+using Presentation.FormProfile;
 
-namespace Presentation.FormAdmin
+namespace Presentation.FormPost
 {
     public class AdminReportForm : Form
     {
@@ -118,7 +120,37 @@ namespace Presentation.FormAdmin
             var type = !string.IsNullOrWhiteSpace(report.TargetPostID) ? "Bài đăng" : (!string.IsNullOrWhiteSpace(report.TargetUserID) ? "Người dùng" : "Khác");
             var targetId = !string.IsNullOrWhiteSpace(report.TargetPostID) ? report.TargetPostID : report.TargetUserID;
 
-            var lblTarget = new Label { Text = $"Đối tượng: {type} - ID: {targetId}", Font = new Font("Segoe UI", 10, FontStyle.Bold), Location = new Point(15, 15), AutoSize = true };
+            var lblTarget = new LinkLabel
+            {
+                Text = $"Đối tượng: {type} - ID: {targetId}",
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                Location = new Point(15, 15),
+                AutoSize = true,
+                LinkBehavior = LinkBehavior.HoverUnderline,
+                LinkColor = Color.FromArgb(30, 30, 30),
+                ActiveLinkColor = Color.FromArgb(24, 119, 242)
+            };
+
+            if (type != "Khác")
+            {
+                lblTarget.Click += (_, __) =>
+                {
+                    if (!string.IsNullOrWhiteSpace(report.TargetPostID))
+                    {
+                        var postBll = BusinessLogic.AppServices.PostBll;
+                        using var frm = new PostDetailForm(postBll, report.TargetPostID);
+                        frm.ShowDialog(this);
+                    }
+                    else if (!string.IsNullOrWhiteSpace(report.TargetUserID))
+                    {
+                        var userProfileForm = new UserProfile(report.TargetUserID, this);
+                        userProfileForm.FormClosed += (s, ev) => { this.Show(); };
+                        userProfileForm.Show();
+                        this.Hide();
+                    }
+                };
+            }
+
             var lblReason = new Label { Text = $"Lý do: {report.Reason}", Font = new Font("Segoe UI", 9, FontStyle.Bold), Location = new Point(15, 40), AutoSize = true, ForeColor = Color.FromArgb(255, 30, 100) };
             var lblDesc = new Label { Text = $"Chi tiết: {report.Description}", Font = new Font("Segoe UI", 9), Location = new Point(15, 65), AutoSize = true, MaximumSize = new Size(600, 45) };
             var lblDate = new Label { Text = $"Ngày: {report.CreatedAt.ToLocalTime():dd/MM/yyyy HH:mm}", Font = new Font("Segoe UI", 9, FontStyle.Italic), Location = new Point(15, 120), AutoSize = true, ForeColor = Color.Gray };

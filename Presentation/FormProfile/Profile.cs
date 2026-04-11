@@ -35,7 +35,6 @@ namespace Presentation.FormProfile
         private Label lblDob;
         private FlowLayoutPanel flpTags;
 
-        private const string BaseUrl = "https://litmatchclone-production-944b.up.railway.app";
         private const int FeedMaxWidth = 680;
 
         public Profile()
@@ -797,9 +796,9 @@ namespace Presentation.FormProfile
             {
                 using var httpClient = new HttpClient();
 
-                var fullUrl = relativeOrFullUrl.StartsWith("http", System.StringComparison.OrdinalIgnoreCase)
-                    ? relativeOrFullUrl
-                    : $"{BaseUrl}{relativeOrFullUrl}";
+                var fullUrl = relativeOrFullUrl.StartsWith("http", System.StringComparison.OrdinalIgnoreCase) ?
+                    relativeOrFullUrl :
+                    $"{BusinessLogic.AppConfig.BaseUrl}{relativeOrFullUrl}";
 
                 var bytes = await httpClient.GetByteArrayAsync(fullUrl);
                 using var ms = new MemoryStream(bytes);

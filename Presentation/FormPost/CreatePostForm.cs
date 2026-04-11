@@ -27,7 +27,6 @@ namespace Presentation
 
         private readonly List<LocalMedia> _selected = new();
         private string _contentPlaceholder = "Bạn đang nghĩ gì thế?";
-        private const string BaseUrl = "https://litmatchclone-production-944b.up.railway.app";
 
         private sealed class LocalMedia
         {
@@ -624,9 +623,9 @@ namespace Presentation
             {
                 using var httpClient = new HttpClient();
 
-                var fullUrl = relativeOrFullUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase)
-                    ? relativeOrFullUrl
-                    : $"{BaseUrl}{relativeOrFullUrl}";
+                var fullUrl = relativeOrFullUrl.StartsWith("http", StringComparison.OrdinalIgnoreCase) ?
+                    relativeOrFullUrl :
+                    $"{BusinessLogic.AppConfig.BaseUrl}{relativeOrFullUrl}";
 
                 var bytes = await httpClient.GetByteArrayAsync(fullUrl);
                 using var ms = new MemoryStream(bytes);

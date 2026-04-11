@@ -433,8 +433,14 @@ namespace Presentation
             {
                 if (IsDisposed) return;
                 if (string.IsNullOrWhiteSpace(err)) return;
-                // Không show MessageBox liên tục; ưu tiên hiển thị vào status.
-                _lblStatus.Text = err;
+
+                // Nếu đang trong quá trình tìm kiếm, dừng lại và hiển thị lỗi
+                if (_searching)
+                {
+                    SetSearchingState(false);
+                    _lblStatus.Text = "Không thể ghép đôi.";
+                    MessageBox.Show(this, err, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }));
         }
     }

@@ -331,6 +331,12 @@ namespace BusinessLogic
 
                 switch (type)
                 {
+                    case "error":
+                    {
+                        var msg = doc.RootElement.TryGetProperty("message", out var elMsg) ? elMsg.GetString() : "Lỗi không xác định từ máy chủ.";
+                        Error?.Invoke(msg);
+                        break;
+                    }
                     case "waiting":
                     {
                         // Waiting payload has no extra fields.

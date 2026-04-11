@@ -28,8 +28,6 @@ namespace Presentation.FormProfile
         private string _pickedAvatarPath;
         private bool _avatarDirty;
 
-        private const string BaseUrl = "https://litmatchclone-production-944b.up.railway.app/";
-
         public EditProfile(UserBLL userBll, UserProfileDTO seed)
         {
             InitializeComponent();
@@ -418,9 +416,9 @@ namespace Presentation.FormProfile
             try
             {
                 using var httpClient = new HttpClient();
-                var fullUrl = relativeOrFullUrl.StartsWith("http", System.StringComparison.OrdinalIgnoreCase)
-                    ? relativeOrFullUrl
-                    : $"{BaseUrl}{relativeOrFullUrl}";
+                var fullUrl = relativeOrFullUrl.StartsWith("http", System.StringComparison.OrdinalIgnoreCase) ?
+                    relativeOrFullUrl :
+                    $"{BusinessLogic.AppConfig.BaseUrl}{relativeOrFullUrl}";
                 var bytes = await httpClient.GetByteArrayAsync(fullUrl);
                 using var ms = new MemoryStream(bytes);
                 return Image.FromStream(ms);

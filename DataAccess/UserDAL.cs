@@ -3,10 +3,23 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Collections.Generic;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using DataTransferObject;
 
+namespace DataTransferObject
+{
+    public class UpdateUserRestrictionsRequestDTO
+    {
+        [JsonPropertyName("restrictions")]
+        public List<string> Restrictions { get; set; }
+
+        [JsonPropertyName("reason")]
+        public string Reason { get; set; }
+    }
+}
 
 namespace DataAccess
 {
@@ -146,6 +159,17 @@ namespace DataAccess
                 return new UploadMediaResponeDTO { Url = urlText.Trim() };
 
             throw new Exception("Upload failed: cannot parse response: " + responseText);
+        }
+
+        public async Task UpdateUserRestrictionsAsync(string userId, UpdateUserRestrictionsRequestDTO dto)
+        {
+            if (string.IsNullOrWhiteSpace(userId))
+                throw new ArgumentException("User ID is required.", nameof(userId));
+            if (dto == null)
+                throw new ArgumentNullException(nameof(dto));
+
+            // Assuming the endpoint is PUT admin/users/{userId}/restrictions
+            await _api.PutAsync<UpdateUserRestrictionsRequestDTO, APIresponseDTO>($"admin/users/{userId}/restrictions", dto);
         }
 
         private static string? TryExtractUrl(string input)

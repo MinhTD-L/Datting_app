@@ -1,4 +1,4 @@
-namespace Presentation.FormAdmin
+namespace Presentation.FormPost
 {
     partial class AdminMainDashboard
     {

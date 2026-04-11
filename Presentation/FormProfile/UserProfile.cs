@@ -36,7 +36,6 @@ namespace Presentation.FormProfile
         private Label lblDob;
         private FlowLayoutPanel flpTags;
 
-        private const string BaseUrl = "https://litmatchclone-production-944b.up.railway.app";
         private const int FeedMaxWidth = 680;
 
         public UserProfile(string targetUserId, Form backTo = null)
@@ -523,17 +522,17 @@ namespace Presentation.FormProfile
                 {
                     if (post?.User != null && !string.IsNullOrWhiteSpace(post.User.AvatarURL))
                     {
-                        var avatar = await LoadImageFromUrl(post.User.AvatarURL);
-                        if (avatar != null && !picAvatar.IsDisposed) picAvatar.Image = avatar;
+                        var avatarImg = await LoadImageFromUrl(post.User.AvatarURL);
+                        if (avatarImg != null && !picAvatar.IsDisposed) picAvatar.Image = avatarImg;
                     }
                     if (post?.Media != null && post.Media.Count > 0)
                     {
-                        var images = post.Media.FindAll(x => !string.IsNullOrWhiteSpace(x?.Url) && string.Equals(x.Type, "image", System.StringComparison.OrdinalIgnoreCase));
-                        if (images.Count > 0 && !mediaHost.IsDisposed)
+                        var mediaItems = post.Media.FindAll(x => !string.IsNullOrWhiteSpace(x?.Url) && (string.Equals(x.Type, "image", StringComparison.OrdinalIgnoreCase) || string.Equals(x.Type, "video", StringComparison.OrdinalIgnoreCase)));
+                        if (mediaItems.Count > 0 && !mediaHost.IsDisposed)
                         {
                             mediaHost.Visible = true;
                             mediaHost.Controls.Clear();
-                            await BuildMediaGridAsync(mediaHost, images);
+                            await BuildMediaGridAsync(mediaHost, mediaItems);
 
                             lblStats.Top = mediaHost.Bottom + 10;
                             divider.Top = lblStats.Bottom + 8;
@@ -565,11 +564,11 @@ namespace Presentation.FormProfile
             return Math.Min(size.Height, maxHeight);
         }
 
-        private async Task BuildMediaGridAsync(Panel host, System.Collections.Generic.List<PostMedia> images)
+        private async Task BuildMediaGridAsync(Panel host, System.Collections.Generic.List<PostMedia> mediaItems)
         {
             host.Controls.Clear();
             host.Visible = true;
-            var count = images.Count;
+            var count = mediaItems.Count;
             var gap = 3;
             var maxShow = Math.Min(4, count);
 
@@ -581,24 +580,70 @@ namespace Presentation.FormProfile
 
             host.Controls.Add(grid);
 
-            PictureBox CreateMediaBox() => new PictureBox { Dock = DockStyle.Fill, SizeMode = PictureBoxSizeMode.Zoom, BackColor = Color.Black, Margin = Padding.Empty };
-            Control WrapCell(Control inner) { var cell = new Panel { Dock = DockStyle.Fill, BackColor = Color.Transparent, Margin = Padding.Empty, Padding = new Padding(gap / 2) }; inner.Dock = DockStyle.Fill; cell.Controls.Add(inner); return cell; }
-            async Task<Image> TryLoad(string url) => await LoadImageFromUrl(url);
+            async Task<Control> CreateMediaControlAsync(PostMedia media)
+            {
+                var cell = new Panel { Dock = DockStyle.Fill, BackColor = Color.Transparent, Margin = Padding.Empty, Padding = new Padding(gap / 2) };
+                Control inner;
 
-            if (count == 1) { var pb = CreateMediaBox(); grid.Controls.Add(WrapCell(pb), 0, 0); pb.Image = await TryLoad(images[0].Url); return; }
-            if (count == 2) { for (var i = 0; i < 2; i++) { var pb = CreateMediaBox(); grid.Controls.Add(WrapCell(pb), i, 0); pb.Image = await TryLoad(images[i].Url); } return; }
-            if (count == 3) { var pb0 = CreateMediaBox(); var c0 = WrapCell(pb0); grid.Controls.Add(c0, 0, 0); grid.SetRowSpan(c0, 2); var pb1 = CreateMediaBox(); grid.Controls.Add(WrapCell(pb1), 1, 0); var pb2 = CreateMediaBox(); grid.Controls.Add(WrapCell(pb2), 1, 1); pb0.Image = await TryLoad(images[0].Url); pb1.Image = await TryLoad(images[1].Url); pb2.Image = await TryLoad(images[2].Url); return; }
+                if (string.Equals(media.Type, "video", StringComparison.OrdinalIgnoreCase))
+                {
+                    var pb = new PictureBox
+                    {
+                        Dock = DockStyle.Fill,
+                        SizeMode = PictureBoxSizeMode.Zoom,
+                        BackColor = Color.Black,
+                        Margin = Padding.Empty,
+                        Cursor = Cursors.Hand
+                    };
+
+                    var playButton = new Label { Text = "▶", Font = new Font("Segoe UI Emoji", 24, FontStyle.Bold), ForeColor = Color.White, BackColor = Color.FromArgb(100, 0, 0, 0), Size = new Size(60, 60), TextAlign = ContentAlignment.MiddleCenter };
+                    playButton.Location = new Point((pb.Width - playButton.Width) / 2, (pb.Height - playButton.Height) / 2);
+                    playButton.Anchor = AnchorStyles.None;
+                    var path = new System.Drawing.Drawing2D.GraphicsPath();
+                    path.AddEllipse(0, 0, playButton.Width, playButton.Height);
+                    playButton.Region = new Region(path);
+                    pb.Controls.Add(playButton);
+
+                    void OpenVideo() {
+                        try
+                        {
+                            var fullUrl = media.Url.StartsWith("http") ? media.Url : BusinessLogic.AppConfig.BaseUrl + media.Url;
+                            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(fullUrl) { UseShellExecute = true });
+                        }
+                        catch (Exception ex) { MessageBox.Show("Không thể mở video: " + ex.Message); }
+                    }
+
+                    pb.Click += (_, __) => OpenVideo();
+                    playButton.Click += (_, __) => OpenVideo();
+                    inner = pb;
+                }
+                else // image
+                {
+                    var pb = new PictureBox { Dock = DockStyle.Fill, SizeMode = PictureBoxSizeMode.Zoom, BackColor = Color.Black, Margin = Padding.Empty };
+                    pb.Image = await LoadImageFromUrl(media.Url);
+                    inner = pb;
+                }
+
+                cell.Controls.Add(inner);
+                return cell;
+            }
+
+            if (count == 1) { var mc = await CreateMediaControlAsync(mediaItems[0]); grid.Controls.Add(mc, 0, 0); return; }
+            if (count == 2) { for (var i = 0; i < 2; i++) { var mc = await CreateMediaControlAsync(mediaItems[i]); grid.Controls.Add(mc, i, 0); } return; }
+            if (count == 3) { var mc0 = await CreateMediaControlAsync(mediaItems[0]); grid.Controls.Add(mc0, 0, 0); grid.SetRowSpan(mc0, 2); var mc1 = await CreateMediaControlAsync(mediaItems[1]); grid.Controls.Add(mc1, 1, 0); var mc2 = await CreateMediaControlAsync(mediaItems[2]); grid.Controls.Add(mc2, 1, 1); return; }
 
             var cells = new (int col, int row)[] { (0, 0), (1, 0), (0, 1), (1, 1) };
             for (var i = 0; i < maxShow; i++)
             {
-                var pb = CreateMediaBox(); var cell = WrapCell(pb); grid.Controls.Add(cell, cells[i].col, cells[i].row); pb.Image = await TryLoad(images[i].Url);
+                var cell = await CreateMediaControlAsync(mediaItems[i]);
+                grid.Controls.Add(cell, cells[i].col, cells[i].row);
+
                 if (i == 3 && count > 4) { var overlay = new Panel { Dock = DockStyle.Fill, BackColor = Color.FromArgb(120, 0, 0, 0), Margin = Padding.Empty }; var lbl = new Label { Text = $"+{count - 4}", ForeColor = Color.White, Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter, Font = new Font("Segoe UI", 16, FontStyle.Bold), BackColor = Color.Transparent }; overlay.Controls.Add(lbl); cell.Controls.Add(overlay); overlay.BringToFront(); }
             }
         }
 
         private static async Task LoadThumbAsync(PictureBox pb, string url) { try { var img = await LoadImageFromUrl(url); if (img != null && !pb.IsDisposed) pb.Image = img; } catch { } }
-        private static async Task<Image> LoadImageFromUrl(string relativeOrFullUrl) { try { using var httpClient = new HttpClient(); var fullUrl = relativeOrFullUrl.StartsWith("http", System.StringComparison.OrdinalIgnoreCase) ? relativeOrFullUrl : $"{BaseUrl}{relativeOrFullUrl}"; var bytes = await httpClient.GetByteArrayAsync(fullUrl); using var ms = new MemoryStream(bytes); return Image.FromStream(ms); } catch { return null; } }
+        private static async Task<Image> LoadImageFromUrl(string relativeOrFullUrl) { try { using var httpClient = new HttpClient(); var fullUrl = relativeOrFullUrl.StartsWith("http", System.StringComparison.OrdinalIgnoreCase) ? relativeOrFullUrl : $"{BusinessLogic.AppConfig.BaseUrl}{relativeOrFullUrl}"; var bytes = await httpClient.GetByteArrayAsync(fullUrl); using var ms = new MemoryStream(bytes); return Image.FromStream(ms); } catch { return null; } }
 
         private async Task OpenPostDetailAsync(string postId, bool openComments = false)
         {

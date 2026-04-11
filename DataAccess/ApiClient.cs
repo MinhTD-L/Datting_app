@@ -71,7 +71,15 @@ public class ApiClient
             throw new UnauthorizedAccessException("Token expired");
         }
 
-        return await response.Content.ReadAsStringAsync();
+        var responseJson = await response.Content.ReadAsStringAsync();
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new HttpRequestException(ExtractErrorMessage(responseJson) ??
+                                           $"Request failed with status code: {response.StatusCode}");
+        }
+
+        return responseJson;
     }
     public async Task<TResponse> GetAsync<TResponse>(string url)
     {
@@ -293,4 +301,3 @@ public class ApiClient
         return s.Substring(start).Trim();
     }
 }
-
