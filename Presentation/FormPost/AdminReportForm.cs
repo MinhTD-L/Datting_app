@@ -70,12 +70,12 @@ namespace Presentation.FormPost
             var line = new Panel { Dock = DockStyle.Top, Height = 1, BackColor = Color.LightGray };
             pnlFooter.Controls.Add(line);
 
-            var btnExport = new Button { Text = "Xuất CSV", Width = 120, Height = 35, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(10, 130, 60), ForeColor = Color.White };
+            var btnExport = new Button { Text = "Xem trước CSV", Width = 140, Height = 35, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(10, 130, 60), ForeColor = Color.White };
             btnExport.FlatAppearance.BorderSize = 0;
             btnExport.Click += (_, __) => ExportReportsToCsv();
             btnExport.Cursor = Cursors.Hand;
 
-            var btnExportPdf = new Button { Text = "Xuất PDF", Width = 120, Height = 35, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(180, 50, 50), ForeColor = Color.White };
+            var btnExportPdf = new Button { Text = "Xem trước PDF", Width = 140, Height = 35, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(180, 50, 50), ForeColor = Color.White };
             btnExportPdf.FlatAppearance.BorderSize = 0;
             btnExportPdf.Click += (_, __) => ExportReportsToPdf();
             btnExportPdf.Cursor = Cursors.Hand;
@@ -239,31 +239,23 @@ namespace Presentation.FormPost
                 return;
             }
 
-            using (var sfd = new SaveFileDialog())
+            try
             {
-                sfd.Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*";
-                sfd.FileName = $"Report_List_{DateTime.Now:yyyyMMdd_HHmm}.csv";
-                if (sfd.ShowDialog() == DialogResult.OK)
+                var sb = new StringBuilder();
+                sb.AppendLine("ID,ReporterID,TargetUserID,TargetPostID,Reason,Description,Status,ResolveNote,CreatedAt");
+
+                foreach (var r in _cachedReports)
                 {
-                    try
-                    {
-                        var sb = new StringBuilder();
-                        sb.AppendLine("ID,ReporterID,TargetUserID,TargetPostID,Reason,Description,Status,ResolveNote,CreatedAt");
-
-                        foreach (var r in _cachedReports)
-                        {
-                            var line = $"{r.ReportID},{r.ReporterID},{r.TargetUserID},{r.TargetPostID},{EscapeCsvField(r.Reason)},{EscapeCsvField(r.Description)},{r.Status},{EscapeCsvField(r.ResolveNote)},{r.CreatedAt.ToLocalTime():yyyy-MM-dd HH:mm:ss}";
-                            sb.AppendLine(line);
-                        }
-
-                        System.IO.File.WriteAllText(sfd.FileName, sb.ToString(), Encoding.UTF8);
-                        MessageBox.Show("Xuất dữ liệu thành công!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show("Lỗi khi xuất file: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
+                    var line = $"{r.ReportID},{r.ReporterID},{r.TargetUserID},{r.TargetPostID},{EscapeCsvField(r.Reason)},{EscapeCsvField(r.Description)},{r.Status},{EscapeCsvField(r.ResolveNote)},{r.CreatedAt.ToLocalTime():yyyy-MM-dd HH:mm:ss}";
+                    sb.AppendLine(line);
                 }
+
+                using var previewForm = new Presentation.Reports.TextPreviewForm(sb.ToString(), $"Report_List_{DateTime.Now:yyyyMMdd_HHmm}.csv");
+                previewForm.ShowDialog(this);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi khi tạo dữ liệu: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -285,62 +277,91 @@ namespace Presentation.FormPost
                 return;
             }
 
-            using (var sfd = new SaveFileDialog())
+            try
             {
-                sfd.Filter = "PDF files (*.pdf)|*.pdf|All files (*.*)|*.*";
-                sfd.FileName = $"Report_List_{DateTime.Now:yyyyMMdd_HHmm}.pdf";
-                if (sfd.ShowDialog() == DialogResult.OK)
+                var document = Document.Create(container =>
                 {
-                    try
+                    container.Page(page =>
                     {
-                        Document.Create(container =>
+                        page.Margin(30);
+                        
+                        page.Header().Row(row =>
                         {
-                            container.Page(page =>
+                            row.RelativeItem().Column(col =>
                             {
-                                page.Margin(30);
-                                page.Header().Text(text => text.Span("Danh sách Báo cáo").Style(TextStyle.Default.FontSize(20).SemiBold().FontColor(Colors.Blue.Medium)));
-                                page.Content().PaddingVertical(10).Table(table =>
-                                {
-                                    table.ColumnsDefinition(columns =>
-                                    {
-                                        columns.ConstantColumn(80); // Loại
-                                        columns.RelativeColumn();   // Target ID
-                                        columns.RelativeColumn();   // Lý do
-                                        columns.ConstantColumn(80); // Trạng thái
-                                        columns.ConstantColumn(100); // Ngày
-                                    });
-
-                                    table.Header(header =>
-                                    {
-                                        header.Cell().Background(Colors.Grey.Lighten3).Padding(5).Text("Loại");
-                                        header.Cell().Background(Colors.Grey.Lighten3).Padding(5).Text("Target ID");
-                                        header.Cell().Background(Colors.Grey.Lighten3).Padding(5).Text("Lý do");
-                                        header.Cell().Background(Colors.Grey.Lighten3).Padding(5).Text("Trạng thái");
-                                        header.Cell().Background(Colors.Grey.Lighten3).Padding(5).Text("Ngày");
-                                    });
-
-                                    foreach (var r in _cachedReports)
-                                    {
-                                        var type = !string.IsNullOrWhiteSpace(r.TargetPostID) ? "Bài đăng" : (!string.IsNullOrWhiteSpace(r.TargetUserID) ? "Người dùng" : "Khác");
-                                        var targetId = !string.IsNullOrWhiteSpace(r.TargetPostID) ? r.TargetPostID : r.TargetUserID;
-                                        targetId = targetId?.Length > 8 ? targetId.Substring(0, 8) + "..." : targetId;
-
-                                        table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(type);
-                                        table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(targetId ?? "");
-                                        table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(r.Reason ?? "");
-                                        table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(r.Status ?? "");
-                                        table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(r.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm"));
-                                    }
-                                });
-                                page.Footer().AlignCenter().Text(text => { text.CurrentPageNumber(); text.Span(" / "); text.TotalPages(); });
+                                col.Item().Text("DANH SÁCH BÁO CÁO VI PHẠM").Style(TextStyle.Default.FontSize(20).SemiBold().FontColor(Colors.Red.Darken2));
+                                col.Item().Text($"Ngày xuất: {DateTime.Now:dd/MM/yyyy HH:mm}").Style(TextStyle.Default.FontSize(10).FontColor(Colors.Grey.Darken1));
+                                col.Item().Text($"Tổng số lượng: {_cachedReports.Count} báo cáo").Style(TextStyle.Default.FontSize(10).FontColor(Colors.Grey.Darken1));
                             });
-                        }).GeneratePdf(sfd.FileName);
+                        });
 
-                        MessageBox.Show("Xuất PDF thành công!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        Process.Start(new ProcessStartInfo(sfd.FileName) { UseShellExecute = true });
-                    }
-                    catch (Exception ex) { MessageBox.Show("Lỗi khi tạo báo cáo PDF: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error); }
-                }
+                        page.Content().PaddingVertical(15).Column(column =>
+                        {
+                            column.Spacing(15);
+                            foreach (var r in _cachedReports)
+                            {
+                                var isPending = r.Status == "pending";
+                                var statusColor = isPending ? Colors.Orange.Medium : (r.Status == "approved" ? Colors.Green.Medium : Colors.Red.Medium);
+                                var statusText = isPending ? "ĐANG CHỜ XỬ LÝ" : (r.Status == "approved" ? "ĐÃ DUYỆT (ĐỒNG Ý)" : "ĐÃ TỪ CHỐI");
+                                
+                                var type = !string.IsNullOrWhiteSpace(r.TargetPostID) ? "Bài đăng" : (!string.IsNullOrWhiteSpace(r.TargetUserID) ? "Người dùng" : "Khác");
+                                var targetId = !string.IsNullOrWhiteSpace(r.TargetPostID) ? r.TargetPostID : r.TargetUserID;
+
+                                column.Item().Background(Colors.White)
+                                    .Border(1).BorderColor(isPending ? Colors.Blue.Lighten2 : Colors.Grey.Lighten2)
+                                    .Padding(12)
+                                    .Column(card =>
+                                    {
+                                        card.Item().Row(row =>
+                                        {
+                                            row.RelativeItem().Text($"Mã báo cáo: {r.ReportID}").FontSize(9).FontColor(Colors.Grey.Medium);
+                                            row.ConstantItem(120).AlignRight().Text(statusText).FontSize(10).Bold().FontColor(statusColor);
+                                        });
+
+                                        card.Item().PaddingTop(5).LineHorizontal(1).LineColor(Colors.Grey.Lighten3);
+
+                                        card.Item().PaddingTop(8).Grid(grid =>
+                                        {
+                                            grid.Columns(12);
+                                            grid.Spacing(5);
+
+                                            grid.Item(3).Text("Người báo cáo:").SemiBold().FontSize(10);
+                                            grid.Item(9).Text(r.ReporterID).FontSize(10);
+
+                                            grid.Item(3).Text("Đối tượng vi phạm:").SemiBold().FontSize(10);
+                                            grid.Item(9).Text($"{type} ({targetId})").FontSize(10);
+
+                                            grid.Item(3).Text("Ngày báo cáo:").SemiBold().FontSize(10);
+                                            grid.Item(9).Text(r.CreatedAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm:ss")).FontSize(10);
+
+                                            grid.Item(3).Text("Lý do:").SemiBold().FontSize(10).FontColor(Colors.Red.Medium);
+                                            grid.Item(9).Text(r.Reason).FontSize(10).Bold().FontColor(Colors.Red.Medium);
+
+                                            grid.Item(3).Text("Chi tiết:").SemiBold().FontSize(10);
+                                            grid.Item(9).Text(string.IsNullOrWhiteSpace(r.Description) ? "Không có" : r.Description).FontSize(10).Italic();
+                                        });
+
+                                        if (!isPending)
+                                        {
+                                            card.Item().PaddingTop(10).Background(Colors.Green.Lighten5).Padding(8).Column(noteCol =>
+                                            {
+                                                noteCol.Item().Text("Ghi chú xử lý từ Quản trị viên:").SemiBold().FontSize(10).FontColor(Colors.Green.Darken2);
+                                                noteCol.Item().PaddingTop(2).Text(string.IsNullOrWhiteSpace(r.ResolveNote) ? "Không có" : r.ResolveNote).FontSize(10).FontColor(Colors.Green.Darken3);
+                                            });
+                                        }
+                                    });
+                            }
+                        });
+                        page.Footer().AlignCenter().Text(text => { text.CurrentPageNumber(); text.Span(" / "); text.TotalPages(); });
+                    });
+                });
+
+                using var previewForm = new Presentation.Reports.PdfPreviewForm(document, $"Report_List_{DateTime.Now:yyyyMMdd_HHmm}.pdf");
+                previewForm.ShowDialog(this);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi khi tạo báo cáo PDF: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }
@@ -361,7 +382,7 @@ namespace Presentation.FormPost
             _report = report;
 
             Text = "Chi tiết & Xử lý báo cáo";
-            Size = new Size(420, 500);
+            Size = new Size(460, 600);
             StartPosition = FormStartPosition.CenterParent;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
@@ -372,46 +393,75 @@ namespace Presentation.FormPost
 
         private void InitComponents()
         {
+            var isPending = _report.Status == "pending";
             var targetType = !string.IsNullOrWhiteSpace(_report.TargetPostID) ? "Bài đăng" : "Người dùng";
             var targetId = !string.IsNullOrWhiteSpace(_report.TargetPostID) ? _report.TargetPostID : _report.TargetUserID;
             int currentY = 20;
 
-            var lblTarget = new Label { Text = $"Đối tượng report: {targetType}\nID: {targetId}", Location = new Point(20, currentY), AutoSize = true, Font = new Font("Segoe UI", 9, FontStyle.Bold) };
+            var lblTarget = new Label { Text = $"Đối tượng: {targetType}\nID: {targetId}", Location = new Point(20, currentY), AutoSize = true, Font = new Font("Segoe UI", 10, FontStyle.Bold) };
             currentY += 45;
+
+            var lblReporter = new Label { Text = $"Người báo cáo: {_report.ReporterID}", Location = new Point(20, currentY), AutoSize = true, Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.DimGray };
+            currentY += 25;
 
             var lblReasonInfo = new Label { Text = $"Lý do: {_report.Reason}", Location = new Point(20, currentY), AutoSize = true, Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.Red };
             currentY += 30;
 
-            var lblDescInfo = new Label { Text = $"Chi tiết:\n{_report.Description}", Location = new Point(20, currentY), AutoSize = true, MaximumSize = new Size(360, 0) };
-            currentY += 65;
+            var lblDescInfo = new Label { Text = $"Chi tiết:\n{_report.Description}", Location = new Point(20, currentY), AutoSize = true, MaximumSize = new Size(400, 0) };
+            currentY += lblDescInfo.PreferredHeight + 15;
+
+            if (!isPending)
+            {
+                var pnlNote = new Panel { Location = new Point(20, currentY), Width = 400, AutoSize = true, BackColor = Color.FromArgb(235, 245, 235), Padding = new Padding(10) };
+                var lblStatus = new Label { Text = $"Trạng thái: {_report.Status.ToUpper()}", Location = new Point(10, 10), AutoSize = true, Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = _report.Status == "approved" ? Color.Green : Color.DarkRed };
+                var lblNoteTitle = new Label { Text = "Ghi chú xử lý:", Font = new Font("Segoe UI", 9, FontStyle.Bold), ForeColor = Color.DarkGreen, Location = new Point(10, 35), AutoSize = true };
+                var lblNoteContent = new Label { Text = string.IsNullOrWhiteSpace(_report.ResolveNote) ? "Không có" : _report.ResolveNote, Font = new Font("Segoe UI", 9.5f, FontStyle.Italic), ForeColor = Color.DarkGreen, Location = new Point(10, 55), AutoSize = true, MaximumSize = new Size(380, 0) };
+                
+                pnlNote.Controls.Add(lblStatus);
+                pnlNote.Controls.Add(lblNoteTitle);
+                pnlNote.Controls.Add(lblNoteContent);
+                Controls.Add(pnlNote);
+                
+                currentY += pnlNote.PreferredSize.Height + 20;
+            }
 
             var lblAction = new Label { Text = "Hành động:", Location = new Point(20, currentY), AutoSize = true };
             currentY += 22;
-            _cboAction = new ComboBox { Location = new Point(20, currentY), Width = 360, DropDownStyle = ComboBoxStyle.DropDownList };
+            _cboAction = new ComboBox { Location = new Point(20, currentY), Width = 400, DropDownStyle = ComboBoxStyle.DropDownList };
             _cboAction.Items.Add(new ComboBoxItem("Xử lý (Đồng ý báo cáo)", "approved"));
             _cboAction.Items.Add(new ComboBoxItem("Từ chối (Báo cáo sai)", "rejected"));
             _cboAction.SelectedIndex = 0;
+            _cboAction.Enabled = isPending;
             currentY += 40;
 
             var lblNote = new Label { Text = "Review note (Ghi chú xử lý):", Location = new Point(20, currentY), AutoSize = true };
             currentY += 22;
-            _txtNote = new TextBox { Location = new Point(20, currentY), Width = 360, Height = 80, Multiline = true, ScrollBars = ScrollBars.Vertical };
+            _txtNote = new TextBox { Location = new Point(20, currentY), Width = 400, Height = 80, Multiline = true, ScrollBars = ScrollBars.Vertical };
+            _txtNote.Enabled = isPending;
+            if (!isPending) _txtNote.Text = _report.ResolveNote;
+            currentY += 100;
 
             _btnSubmit = new Button
             {
-                Text = "Xác nhận",
+                Text = isPending ? "Xác nhận" : "Đóng",
                 Size = new Size(110, 35),
-                BackColor = Color.FromArgb(24, 119, 242),
+                BackColor = isPending ? Color.FromArgb(24, 119, 242) : Color.Gray,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 9, FontStyle.Bold),
                 Anchor = AnchorStyles.Bottom | AnchorStyles.Right
             };
             _btnSubmit.FlatAppearance.BorderSize = 0;
-            _btnSubmit.Location = new Point(this.ClientSize.Width - _btnSubmit.Width - 20, this.ClientSize.Height - _btnSubmit.Height - 20);
-            _btnSubmit.Click += async (_, __) => await SubmitAsync();
+            
+            if (isPending)
+                _btnSubmit.Click += async (_, __) => await SubmitAsync();
+            else
+                _btnSubmit.Click += (_, __) => Close();
 
-            Controls.AddRange(new Control[] { lblTarget, lblReasonInfo, lblDescInfo, lblAction, _cboAction, lblNote, _txtNote, _btnSubmit });
+            Controls.AddRange(new Control[] { lblTarget, lblReporter, lblReasonInfo, lblDescInfo, lblAction, _cboAction, lblNote, _txtNote, _btnSubmit });
+            
+            this.Height = currentY + 80;
+            _btnSubmit.Location = new Point(this.ClientSize.Width - _btnSubmit.Width - 20, this.ClientSize.Height - _btnSubmit.Height - 20);
         }
 
         private async Task SubmitAsync()

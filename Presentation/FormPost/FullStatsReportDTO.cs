@@ -12,6 +12,7 @@ namespace Presentation.FormPost
         public List<OverviewStatItem> OverviewStats { get; set; }
         public List<PopularTagStatDTO> PopularTags { get; set; }
         public Dictionary<string, List<TimeSeriesDataPointDTO>> TimeSeries { get; set; }
+        public Dictionary<string, byte[]> TimeSeriesCharts { get; set; }
 
         public class OverviewStatItem
         {

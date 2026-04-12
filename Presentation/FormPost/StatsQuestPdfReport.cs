@@ -135,30 +135,15 @@ namespace Presentation.Reports
                     column.Item().ShowEntire().Column(col =>
                     {
                         col.Item().Text(text => text.Span(metric.Key).Style(TextStyle.Default.FontSize(12).SemiBold()));
-                        col.Item().PaddingTop(5).Table(table =>
+                        
+                        if (_data.TimeSeriesCharts != null && _data.TimeSeriesCharts.TryGetValue(metric.Key, out var imgBytes))
                         {
-                            table.ColumnsDefinition(columns =>
-                            {
-                                columns.RelativeColumn();
-                                columns.RelativeColumn();
-                            });
-
-                            table.Header(header =>
-                            {
-                                header.Cell().Background(Colors.Grey.Lighten3).Padding(5).Text("Ngày");
-                                header.Cell().Background(Colors.Grey.Lighten3).Padding(5).Text("Số lượng");
-                            });
-
-                            var orderedData = metric.Value
-                                .Where(p => System.DateTime.TryParse(p.Date, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.AssumeLocal, out _))
-                                .OrderBy(p => System.DateTime.Parse(p.Date));
-
-                            foreach (var point in orderedData)
-                            {
-                                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(System.DateTime.Parse(point.Date).ToString("dd/MM/yyyy"));
-                                table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(point.Count.ToString());
-                            }
-                        });
+                            col.Item().PaddingTop(10).Image(imgBytes);
+                        }
+                        else
+                        {
+                            col.Item().PaddingTop(5).Text(text => text.Span("Không có dữ liệu biểu đồ").Style(TextStyle.Default.Italic().FontColor(Colors.Grey.Medium)));
+                        }
                     });
                 }
             });

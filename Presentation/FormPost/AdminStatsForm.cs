@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using QuestPDF.Fluent;
 using System.Diagnostics;
+using System.IO;
 using Presentation.Reports;
 using System.Windows.Forms.DataVisualization.Charting;
 // Thêm using cho Crystal Reports ở file StatsReportViewerForm.cs
@@ -57,12 +58,12 @@ namespace Presentation.FormPost
             var line = new Panel { Dock = DockStyle.Top, Height = 1, BackColor = Color.LightGray };
             pnlFooter.Controls.Add(line);
 
-            var btnExportCsv = new Button { Text = "Xuất CSV", Width = 120, Height = 35, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(10, 130, 60), ForeColor = Color.White };
+            var btnExportCsv = new Button { Text = "Xem trước CSV", Width = 140, Height = 35, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(10, 130, 60), ForeColor = Color.White };
             btnExportCsv.FlatAppearance.BorderSize = 0;
             btnExportCsv.Cursor = Cursors.Hand;
             btnExportCsv.Click += async (_, __) => await ExportAllToCsvAsync();
 
-            var btnExportPdf = new Button { Text = "Xuất PDF (Đẹp)", Width = 160, Height = 35, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(180, 50, 50), ForeColor = Color.White };
+            var btnExportPdf = new Button { Text = "Xem trước PDF", Width = 140, Height = 35, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(180, 50, 50), ForeColor = Color.White };
             btnExportPdf.FlatAppearance.BorderSize = 0;
             btnExportPdf.Cursor = Cursors.Hand;
             btnExportPdf.Click += async (_, __) => await ExportToPdfReportAsync();
@@ -103,7 +104,15 @@ namespace Presentation.FormPost
                 Padding = new Padding(20),
                 FlowDirection = FlowDirection.TopDown,
                 WrapContents = false,
-                BackColor = Color.White
+                BackColor = Color.FromArgb(245, 246, 250)
+            };
+            _pnlOverview.SizeChanged += (s, e) => {
+                foreach (Control c in _pnlOverview.Controls) {
+                    c.Width = _pnlOverview.ClientSize.Width - 40;
+                    if (c.Controls.Count > 1 && c.Controls[1] is FlowLayoutPanel flp) {
+                        flp.Width = c.Width;
+                    }
+                }
             };
             var lblLoading = new Label { Text = "Đang tải...", AutoSize = true, Margin = new Padding(10) };
             _pnlOverview.Controls.Add(lblLoading);
@@ -154,7 +163,7 @@ namespace Presentation.FormPost
             };
 
             var pnlTagsTop = new Panel { Dock = DockStyle.Top, Height = 50, Padding = new Padding(10) };
-            var btnExportTags = new Button { Text = "Xuất CSV", Location = new Point(10, 9), Width = 100, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(20, 150, 80), ForeColor = Color.White };
+            var btnExportTags = new Button { Text = "Xem trước CSV", Location = new Point(10, 9), Width = 130, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(20, 150, 80), ForeColor = Color.White };
             btnExportTags.FlatAppearance.BorderSize = 0;
             btnExportTags.Click += (_, __) => ExportDataGridViewToCsv(_dgvTags, "Popular_Tags");
             pnlTagsTop.Controls.Add(btnExportTags);
@@ -177,10 +186,10 @@ namespace Presentation.FormPost
                 var stats = await _adminBll.GetDashboardStatsAsync();
                 _pnlOverview.Controls.Clear();
 
-                _pnlOverview.Controls.Add(CreateStatGroup("Người dùng", new Dictionary<string, object> { { "Tổng số", stats.Users.Total }, { "Mới hôm nay", stats.Users.NewToday }, { "Mới 7 ngày qua", stats.Users.NewLast7Days }, { "Trực tuyến", stats.Realtime.OnlineUsers } }));
-                _pnlOverview.Controls.Add(CreateStatGroup("Tương tác", new Dictionary<string, object> { { "Bài đăng", stats.Engagement.Posts }, { "Lượt thích", stats.Engagement.Likes }, { "Bình luận", stats.Engagement.Comments }, { "Tin nhắn", stats.Engagement.Messages }, { "Cuộc gọi", stats.Engagement.Calls } }));
-                _pnlOverview.Controls.Add(CreateStatGroup("Xã hội & Ghép đôi", new Dictionary<string, object> { { "Bạn bè", stats.Social.Friendships }, { "Yêu cầu kết bạn", stats.Social.PendingFriendRequests }, { "Ghép đôi thành công", stats.Matching.SuccessfulPairs }, { "Trong hàng chờ", stats.Matching.UsersInQueue } }));
-                _pnlOverview.Controls.Add(CreateStatGroup("Kiểm duyệt", new Dictionary<string, object> { { "Tổng báo cáo", stats.Moderation.TotalReports }, { "Chờ xử lý", stats.Moderation.ByStatus.TryGetValue("pending", out var p) ? p : 0 }, { "Đã duyệt", stats.Moderation.ByStatus.TryGetValue("approved", out var a) ? a : 0 }, { "Đã từ chối", stats.Moderation.ByStatus.TryGetValue("rejected", out var r) ? r : 0 } }));
+                _pnlOverview.Controls.Add(CreateStatGroup("👥 NGƯỜI DÙNG", new Dictionary<string, object> { { "Tổng số", stats.Users.Total }, { "Mới hôm nay", stats.Users.NewToday }, { "Mới 7 ngày qua", stats.Users.NewLast7Days }, { "Trực tuyến", stats.Realtime.OnlineUsers } }, Color.FromArgb(24, 119, 242)));
+                _pnlOverview.Controls.Add(CreateStatGroup("💬 TƯƠNG TÁC", new Dictionary<string, object> { { "Bài đăng", stats.Engagement.Posts }, { "Lượt thích", stats.Engagement.Likes }, { "Bình luận", stats.Engagement.Comments }, { "Tin nhắn", stats.Engagement.Messages }, { "Cuộc gọi", stats.Engagement.Calls } }, Color.FromArgb(255, 136, 0)));
+                _pnlOverview.Controls.Add(CreateStatGroup("❤️ XÃ HỘI & GHÉP ĐÔI", new Dictionary<string, object> { { "Bạn bè", stats.Social.Friendships }, { "Yêu cầu kết bạn", stats.Social.PendingFriendRequests }, { "Ghép đôi thành công", stats.Matching.SuccessfulPairs }, { "Trong hàng chờ", stats.Matching.UsersInQueue } }, Color.FromArgb(230, 30, 100)));
+                _pnlOverview.Controls.Add(CreateStatGroup("🛡️ KIỂM DUYỆT", new Dictionary<string, object> { { "Tổng báo cáo", stats.Moderation.TotalReports }, { "Chờ xử lý", stats.Moderation.ByStatus.TryGetValue("pending", out var p) ? p : 0 }, { "Đã duyệt", stats.Moderation.ByStatus.TryGetValue("approved", out var a) ? a : 0 }, { "Đã từ chối", stats.Moderation.ByStatus.TryGetValue("rejected", out var r) ? r : 0 } }, Color.FromArgb(180, 50, 50)));
             }
             catch (Exception ex)
             {
@@ -189,19 +198,29 @@ namespace Presentation.FormPost
             }
         }
 
-        private GroupBox CreateStatGroup(string title, Dictionary<string, object> data)
+        private Control CreateStatGroup(string title, Dictionary<string, object> data, Color themeColor)
         {
-            var group = new GroupBox { Text = title, AutoSize = true, Padding = new Padding(10), Margin = new Padding(10), Font = new Font("Segoe UI", 10, FontStyle.Bold) };
-            var layout = new TableLayoutPanel { Dock = DockStyle.Fill, AutoSize = true, ColumnCount = 2 };
-            layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            var groupPanel = new Panel { AutoSize = true, Width = _pnlOverview.ClientSize.Width - 40, Margin = new Padding(0, 0, 0, 20) };
+            var lblHeader = new Label { Text = title, Font = new Font("Segoe UI", 12, FontStyle.Bold), ForeColor = themeColor, Location = new Point(5, 0), AutoSize = true };
+            groupPanel.Controls.Add(lblHeader);
+
+            var flowLayout = new FlowLayoutPanel { Location = new Point(0, 30), Width = groupPanel.Width, AutoSize = true, WrapContents = true };
             foreach (var kvp in data)
             {
-                layout.Controls.Add(new Label { Text = kvp.Key + ":", AutoSize = true, Font = new Font("Segoe UI", 9), Margin = new Padding(5) });
-                layout.Controls.Add(new Label { Text = kvp.Value.ToString(), AutoSize = true, Font = new Font("Segoe UI", 9, FontStyle.Bold), Margin = new Padding(5) });
+                var card = new Panel { Width = 200, Height = 80, BackColor = Color.White, Margin = new Padding(5, 5, 15, 15) };
+                card.Paint += (s, e) => {
+                    var rect = card.ClientRectangle; rect.Width--; rect.Height--;
+                    e.Graphics.DrawRectangle(new Pen(Color.FromArgb(228, 228, 228), 1), rect);
+                    e.Graphics.FillRectangle(new SolidBrush(themeColor), 0, 0, 5, card.Height);
+                };
+                var lblKey = new Label { Text = kvp.Key, Font = new Font("Segoe UI", 9, FontStyle.Regular), ForeColor = Color.Gray, Location = new Point(15, 15), AutoSize = true };
+                var lblVal = new Label { Text = kvp.Value?.ToString(), Font = new Font("Segoe UI", 18, FontStyle.Bold), ForeColor = Color.FromArgb(40, 40, 40), Location = new Point(15, 35), AutoSize = true };
+                card.Controls.Add(lblKey);
+                card.Controls.Add(lblVal);
+                flowLayout.Controls.Add(card);
             }
-            group.Controls.Add(layout);
-            return group;
+            groupPanel.Controls.Add(flowLayout);
+            return groupPanel;
         }
 
         private async Task LoadChartDataAsync()
@@ -247,33 +266,26 @@ namespace Presentation.FormPost
                 return;
             }
 
-            using (var sfd = new SaveFileDialog())
+            try
             {
-                sfd.Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*";
-                sfd.FileName = $"{defaultFileName}_{DateTime.Now:yyyyMMdd_HHmm}.csv";
-                if (sfd.ShowDialog() == DialogResult.OK)
+                var sb = new System.Text.StringBuilder();
+
+                var headers = dgv.Columns.Cast<DataGridViewColumn>();
+                sb.AppendLine(string.Join(",", headers.Select(column => EscapeCsvField(column.HeaderText)).ToArray()));
+
+                foreach (DataGridViewRow row in dgv.Rows)
                 {
-                    try
-                    {
-                        var sb = new System.Text.StringBuilder();
-
-                        var headers = dgv.Columns.Cast<DataGridViewColumn>();
-                        sb.AppendLine(string.Join(",", headers.Select(column => EscapeCsvField(column.HeaderText)).ToArray()));
-
-                        foreach (DataGridViewRow row in dgv.Rows)
-                        {
-                            var cells = row.Cells.Cast<DataGridViewCell>();
-                            sb.AppendLine(string.Join(",", cells.Select(cell => EscapeCsvField(cell.Value?.ToString() ?? "")).ToArray()));
-                        }
-
-                        System.IO.File.WriteAllText(sfd.FileName, sb.ToString(), System.Text.Encoding.UTF8);
-                        MessageBox.Show("Xuất dữ liệu thành công!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show("Lỗi khi xuất file: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
+                    var cells = row.Cells.Cast<DataGridViewCell>();
+                    sb.AppendLine(string.Join(",", cells.Select(cell => EscapeCsvField(cell.Value?.ToString() ?? "")).ToArray()));
                 }
+
+                var defaultName = $"{defaultFileName}_{DateTime.Now:yyyyMMdd_HHmm}.csv";
+                using var previewForm = new Presentation.Reports.TextPreviewForm(sb.ToString(), defaultName);
+                previewForm.ShowDialog(this);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi khi xuất: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -289,178 +301,182 @@ namespace Presentation.FormPost
 
         private async Task ExportAllToCsvAsync()
         {
-            using (var sfd = new SaveFileDialog())
+            this.Cursor = Cursors.WaitCursor;
+            try
             {
-                sfd.Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*";
-                sfd.FileName = $"LoveConnect_Report_{DateTime.Now:yyyyMMdd_HHmm}.csv";
-                if (sfd.ShowDialog(this) != DialogResult.OK)
-                {
-                    return;
-                }
+                var sb = new StringBuilder();
+                sb.AppendLine($"Báo cáo Tổng hợp LoveConnect");
+                sb.AppendLine($"Ngày xuất: {DateTime.Now:dd/MM/yyyy HH:mm:ss}");
+                sb.AppendLine();
 
-                this.Cursor = Cursors.WaitCursor;
+                // --- 1. Overview Section ---
+                sb.AppendLine("--- TỔNG QUAN ---");
+                sb.AppendLine("Mục,Giá trị");
                 try
                 {
-                    var sb = new StringBuilder();
-                    sb.AppendLine($"Báo cáo Tổng hợp LoveConnect");
-                    sb.AppendLine($"Ngày xuất: {DateTime.Now:dd/MM/yyyy HH:mm:ss}");
-                    sb.AppendLine();
-
-                    // --- 1. Overview Section ---
-                    sb.AppendLine("--- TỔNG QUAN ---");
-                    sb.AppendLine("Mục,Giá trị");
-                    try
-                    {
-                        var stats = await _adminBll.GetDashboardStatsAsync();
-                        sb.AppendLine($"Tổng số người dùng,{stats.Users.Total}");
-                        sb.AppendLine($"Người dùng mới hôm nay,{stats.Users.NewToday}");
-                        sb.AppendLine($"Người dùng mới 7 ngày qua,{stats.Users.NewLast7Days}");
-                        sb.AppendLine($"Người dùng trực tuyến,{stats.Realtime.OnlineUsers}");
-                        sb.AppendLine($"Tổng bài đăng,{stats.Engagement.Posts}");
-                        sb.AppendLine($"Tổng lượt thích,{stats.Engagement.Likes}");
-                        sb.AppendLine($"Tổng bình luận,{stats.Engagement.Comments}");
-                        sb.AppendLine($"Tổng tin nhắn,{stats.Engagement.Messages}");
-                        sb.AppendLine($"Tổng cuộc gọi,{stats.Engagement.Calls}");
-                        sb.AppendLine($"Tổng số bạn bè,{stats.Social.Friendships}");
-                        sb.AppendLine($"Yêu cầu kết bạn đang chờ,{stats.Social.PendingFriendRequests}");
-                        sb.AppendLine($"Ghép đôi thành công,{stats.Matching.SuccessfulPairs}");
-                        sb.AppendLine($"Người dùng trong hàng chờ,{stats.Matching.UsersInQueue}");
-                        sb.AppendLine($"Tổng số báo cáo,{stats.Moderation.TotalReports}");
-                        sb.AppendLine($"Báo cáo chờ xử lý,{(stats.Moderation.ByStatus.TryGetValue("pending", out var p) ? p : 0)}");
-                        sb.AppendLine($"Báo cáo đã duyệt,{(stats.Moderation.ByStatus.TryGetValue("approved", out var a) ? a : 0)}");
-                        sb.AppendLine($"Báo cáo đã từ chối,{(stats.Moderation.ByStatus.TryGetValue("rejected", out var r) ? r : 0)}");
-                    }
-                    catch (Exception ex) { sb.AppendLine($"Lỗi tải dữ liệu tổng quan,{EscapeCsvField(ex.Message)}"); }
-                    sb.AppendLine();
-
-                    // --- 2. Popular Tags Section ---
-                    sb.AppendLine("--- TAGS PHỔ BIẾN ---");
-                    sb.AppendLine("Tag,Tổng bài đăng,Tổng lượt thích,TB Thích/Bài");
-                    try
-                    {
-                        var tagsData = await _adminBll.GetPopularTagsAsync();
-                        if (tagsData?.Data != null)
-                        {
-                            foreach (var tag in tagsData.Data)
-                            {
-                                sb.AppendLine($"{EscapeCsvField(tag.Tag)},{tag.TotalPosts},{tag.TotalLikes},{tag.AvgLikes:N2}");
-                            }
-                        }
-                    }
-                    catch (Exception ex) { sb.AppendLine($"Lỗi tải dữ liệu tags,{EscapeCsvField(ex.Message)}"); }
-                    sb.AppendLine();
-
-                    // --- 3. Time Series Section ---
-                    var timeSeriesMetrics = _cboMetric.Items.Cast<KeyValuePair<string, string>>();
-                    var endDate = DateTime.Now;
-                    var startDate = endDate.AddDays(-29);
-
-                    foreach (var metric in timeSeriesMetrics)
-                    {
-                        sb.AppendLine($"--- BIỂU ĐỒ: {metric.Key} (từ {startDate:dd/MM/yyyy} đến {endDate:dd/MM/yyyy}) ---");
-                        sb.AppendLine("Ngày,Số lượng");
-                        try
-                        {
-                            var timeSeriesData = await _adminBll.GetTimeSeriesStatsAsync(metric.Value, "daily", startDate, endDate);
-                            if (timeSeriesData?.Data != null)
-                            {
-                                foreach (var point in timeSeriesData.Data)
-                                {
-                                    if (DateTime.TryParse(point.Date, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var date))
-                                        sb.AppendLine($"{date:yyyy-MM-dd},{point.Count}");
-                                }
-                            }
-                        }
-                        catch (Exception ex) { sb.AppendLine($"Lỗi tải dữ liệu biểu đồ,{EscapeCsvField(ex.Message)}"); }
-                        sb.AppendLine();
-                    }
-
-                    System.IO.File.WriteAllText(sfd.FileName, sb.ToString(), Encoding.UTF8);
-                    MessageBox.Show("Xuất báo cáo tổng hợp thành công!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    var stats = await _adminBll.GetDashboardStatsAsync();
+                    sb.AppendLine($"Tổng số người dùng,{stats.Users.Total}");
+                    sb.AppendLine($"Người dùng mới hôm nay,{stats.Users.NewToday}");
+                    sb.AppendLine($"Người dùng mới 7 ngày qua,{stats.Users.NewLast7Days}");
+                    sb.AppendLine($"Người dùng trực tuyến,{stats.Realtime.OnlineUsers}");
+                    sb.AppendLine($"Tổng bài đăng,{stats.Engagement.Posts}");
+                    sb.AppendLine($"Tổng lượt thích,{stats.Engagement.Likes}");
+                    sb.AppendLine($"Tổng bình luận,{stats.Engagement.Comments}");
+                    sb.AppendLine($"Tổng tin nhắn,{stats.Engagement.Messages}");
+                    sb.AppendLine($"Tổng cuộc gọi,{stats.Engagement.Calls}");
+                    sb.AppendLine($"Tổng số bạn bè,{stats.Social.Friendships}");
+                    sb.AppendLine($"Yêu cầu kết bạn đang chờ,{stats.Social.PendingFriendRequests}");
+                    sb.AppendLine($"Ghép đôi thành công,{stats.Matching.SuccessfulPairs}");
+                    sb.AppendLine($"Người dùng trong hàng chờ,{stats.Matching.UsersInQueue}");
+                    sb.AppendLine($"Tổng số báo cáo,{stats.Moderation.TotalReports}");
+                    sb.AppendLine($"Báo cáo chờ xử lý,{(stats.Moderation.ByStatus.TryGetValue("pending", out var p) ? p : 0)}");
+                    sb.AppendLine($"Báo cáo đã duyệt,{(stats.Moderation.ByStatus.TryGetValue("approved", out var a) ? a : 0)}");
+                    sb.AppendLine($"Báo cáo đã từ chối,{(stats.Moderation.ByStatus.TryGetValue("rejected", out var r) ? r : 0)}");
                 }
-                catch (Exception ex) { MessageBox.Show("Lỗi khi xuất file: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error); }
-                finally { this.Cursor = Cursors.Default; }
+                catch (Exception ex) { sb.AppendLine($"Lỗi tải dữ liệu tổng quan,{EscapeCsvField(ex.Message)}"); }
+                sb.AppendLine();
+
+                // --- 2. Popular Tags Section ---
+                sb.AppendLine("--- TAGS PHỔ BIẾN ---");
+                sb.AppendLine("Tag,Tổng bài đăng,Tổng lượt thích,TB Thích/Bài");
+                try
+                {
+                    var tagsData = await _adminBll.GetPopularTagsAsync();
+                    if (tagsData?.Data != null)
+                    {
+                        foreach (var tag in tagsData.Data)
+                        {
+                            sb.AppendLine($"{EscapeCsvField(tag.Tag)},{tag.TotalPosts},{tag.TotalLikes},{tag.AvgLikes:N2}");
+                        }
+                    }
+                }
+                catch (Exception ex) { sb.AppendLine($"Lỗi tải dữ liệu tags,{EscapeCsvField(ex.Message)}"); }
+                sb.AppendLine();
+
+                // --- 3. Time Series Section ---
+                var timeSeriesMetrics = _cboMetric.Items.Cast<KeyValuePair<string, string>>();
+                var endDate = DateTime.Now;
+                var startDate = endDate.AddDays(-29);
+
+                foreach (var metric in timeSeriesMetrics)
+                {
+                    sb.AppendLine($"--- BIỂU ĐỒ: {metric.Key} (từ {startDate:dd/MM/yyyy} đến {endDate:dd/MM/yyyy}) ---");
+                    sb.AppendLine("Ngày,Số lượng");
+                    try
+                    {
+                        var timeSeriesData = await _adminBll.GetTimeSeriesStatsAsync(metric.Value, "daily", startDate, endDate);
+                        if (timeSeriesData?.Data != null)
+                        {
+                            foreach (var point in timeSeriesData.Data)
+                            {
+                                if (DateTime.TryParse(point.Date, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var date))
+                                    sb.AppendLine($"{date:yyyy-MM-dd},{point.Count}");
+                            }
+                        }
+                    }
+                    catch (Exception ex) { sb.AppendLine($"Lỗi tải dữ liệu biểu đồ,{EscapeCsvField(ex.Message)}"); }
+                    sb.AppendLine();
+                }
+
+                this.Cursor = Cursors.Default;
+                var defaultName = $"LoveConnect_Report_{DateTime.Now:yyyyMMdd_HHmm}.csv";
+                using var previewForm = new Presentation.Reports.TextPreviewForm(sb.ToString(), defaultName);
+                previewForm.ShowDialog(this);
+            }
+            catch (Exception ex)
+            {
+                this.Cursor = Cursors.Default;
+                MessageBox.Show("Lỗi khi tạo dữ liệu xuất: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         private async Task ExportToPdfReportAsync()
         {
-            using (var sfd = new SaveFileDialog())
+            this.Cursor = Cursors.WaitCursor;
+            try
             {
-                sfd.Filter = "PDF files (*.pdf)|*.pdf|All files (*.*)|*.*";
-                sfd.FileName = $"LoveConnect_Stats_Report_{DateTime.Now:yyyyMMdd}.pdf";
-                if (sfd.ShowDialog(this) != DialogResult.OK)
+                // 1. Chuẩn bị DTO để chứa tất cả dữ liệu báo cáo
+                var reportData = new FullStatsReportDTO
                 {
-                    return;
-                }
+                    ReportDate = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss"),
+                    OverviewStats = new List<FullStatsReportDTO.OverviewStatItem>(),
+                    PopularTags = new List<PopularTagStatDTO>(),
+                    TimeSeries = new Dictionary<string, List<TimeSeriesDataPointDTO>>(),
+                    TimeSeriesCharts = new Dictionary<string, byte[]>()
+                };
 
-                this.Cursor = Cursors.WaitCursor;
+                // 2. Lấy dữ liệu tổng quan
                 try
                 {
-                    // 1. Chuẩn bị DTO để chứa tất cả dữ liệu báo cáo
-                    var reportData = new FullStatsReportDTO
-                    {
-                        ReportDate = DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss"),
-                        OverviewStats = new List<FullStatsReportDTO.OverviewStatItem>(),
-                        PopularTags = new List<PopularTagStatDTO>(),
-                        TimeSeries = new Dictionary<string, List<TimeSeriesDataPointDTO>>()
-                    };
+                    var stats = await _adminBll.GetDashboardStatsAsync();
+                    reportData.OverviewStats.Add(new FullStatsReportDTO.OverviewStatItem("Tổng số người dùng", stats.Users.Total));
+                    reportData.OverviewStats.Add(new FullStatsReportDTO.OverviewStatItem("Người dùng mới hôm nay", stats.Users.NewToday));
+                    reportData.OverviewStats.Add(new FullStatsReportDTO.OverviewStatItem("Người dùng mới 7 ngày qua", stats.Users.NewLast7Days));
+                    reportData.OverviewStats.Add(new FullStatsReportDTO.OverviewStatItem("Tổng bài đăng", stats.Engagement.Posts));
+                    reportData.OverviewStats.Add(new FullStatsReportDTO.OverviewStatItem("Tổng lượt thích", stats.Engagement.Likes));
+                    reportData.OverviewStats.Add(new FullStatsReportDTO.OverviewStatItem("Ghép đôi thành công", stats.Matching.SuccessfulPairs));
+                    reportData.OverviewStats.Add(new FullStatsReportDTO.OverviewStatItem("Tổng số báo cáo", stats.Moderation.TotalReports));
+                    reportData.OverviewStats.Add(new FullStatsReportDTO.OverviewStatItem("Báo cáo chờ xử lý", (stats.Moderation.ByStatus.TryGetValue("pending", out var p) ? p : 0)));
+                }
+                catch { /* Bỏ qua nếu lỗi, báo cáo sẽ hiển thị phần này trống */ }
 
-                    // 2. Lấy dữ liệu tổng quan
-                    try
+                // 3. Lấy dữ liệu tags phổ biến
+                try
+                {
+                    var tagsData = await _adminBll.GetPopularTagsAsync();
+                    if (tagsData?.Data != null)
                     {
-                        var stats = await _adminBll.GetDashboardStatsAsync();
-                        reportData.OverviewStats.Add(new FullStatsReportDTO.OverviewStatItem("Tổng số người dùng", stats.Users.Total));
-                        reportData.OverviewStats.Add(new FullStatsReportDTO.OverviewStatItem("Người dùng mới hôm nay", stats.Users.NewToday));
-                        reportData.OverviewStats.Add(new FullStatsReportDTO.OverviewStatItem("Người dùng mới 7 ngày qua", stats.Users.NewLast7Days));
-                        reportData.OverviewStats.Add(new FullStatsReportDTO.OverviewStatItem("Tổng bài đăng", stats.Engagement.Posts));
-                        reportData.OverviewStats.Add(new FullStatsReportDTO.OverviewStatItem("Tổng lượt thích", stats.Engagement.Likes));
-                        reportData.OverviewStats.Add(new FullStatsReportDTO.OverviewStatItem("Ghép đôi thành công", stats.Matching.SuccessfulPairs));
-                        reportData.OverviewStats.Add(new FullStatsReportDTO.OverviewStatItem("Tổng số báo cáo", stats.Moderation.TotalReports));
-                        reportData.OverviewStats.Add(new FullStatsReportDTO.OverviewStatItem("Báo cáo chờ xử lý", (stats.Moderation.ByStatus.TryGetValue("pending", out var p) ? p : 0)));
+                        reportData.PopularTags.AddRange(tagsData.Data);
                     }
-                    catch { /* Bỏ qua nếu lỗi, báo cáo sẽ hiển thị phần này trống */ }
+                }
+                catch { /* Bỏ qua nếu lỗi */ }
 
-                    // 3. Lấy dữ liệu tags phổ biến
+                // 4. Lấy dữ liệu biểu đồ
+                var timeSeriesMetrics = _cboMetric.Items.Cast<KeyValuePair<string, string>>();
+                var endDate = DateTime.Now;
+                var startDate = endDate.AddDays(-29);
+                foreach (var metric in timeSeriesMetrics)
+                {
                     try
                     {
-                        var tagsData = await _adminBll.GetPopularTagsAsync();
-                        if (tagsData?.Data != null)
+                        var timeSeriesData = await _adminBll.GetTimeSeriesStatsAsync(metric.Value, "daily", startDate, endDate);
+                        if (timeSeriesData?.Data != null)
                         {
-                            reportData.PopularTags.AddRange(tagsData.Data);
+                            reportData.TimeSeries[metric.Key] = timeSeriesData.Data;
+
+                            using var tempChart = new Chart { Width = 800, Height = 400 };
+                            tempChart.ChartAreas.Add(new ChartArea("MainArea"));
+                            var series = new Series(metric.Key) { ChartType = SeriesChartType.Line, BorderWidth = 3, Color = Color.DodgerBlue, MarkerStyle = MarkerStyle.Circle, MarkerSize = 8 };
+                            tempChart.Series.Add(series);
+                            foreach (var point in timeSeriesData.Data)
+                            {
+                                if (DateTime.TryParse(point.Date, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var date))
+                                    series.Points.AddXY(date, point.Count);
+                            }
+                            tempChart.ChartAreas[0].AxisX.LabelStyle.Format = "dd/MM";
+                            tempChart.ChartAreas[0].AxisX.IntervalType = DateTimeIntervalType.Days;
+                            tempChart.ChartAreas[0].AxisX.MajorGrid.LineColor = Color.LightGray;
+                            tempChart.ChartAreas[0].AxisY.MajorGrid.LineColor = Color.LightGray;
+                            
+                            using var ms = new MemoryStream();
+                            tempChart.SaveImage(ms, ChartImageFormat.Png);
+                            reportData.TimeSeriesCharts[metric.Key] = ms.ToArray();
                         }
                     }
                     catch { /* Bỏ qua nếu lỗi */ }
-
-                    // 4. Lấy dữ liệu biểu đồ
-                    var timeSeriesMetrics = _cboMetric.Items.Cast<KeyValuePair<string, string>>();
-                    var endDate = DateTime.Now;
-                    var startDate = endDate.AddDays(-29);
-                    foreach (var metric in timeSeriesMetrics)
-                    {
-                        try
-                        {
-                            var timeSeriesData = await _adminBll.GetTimeSeriesStatsAsync(metric.Value, "daily", startDate, endDate);
-                            if (timeSeriesData?.Data != null)
-                            {
-                                reportData.TimeSeries[metric.Key] = timeSeriesData.Data;
-                            }
-                        }
-                        catch { /* Bỏ qua nếu lỗi */ }
-                    }
-
-                    // 5. Tạo và xuất file PDF bằng QuestPDF
-                    var document = new StatsQuestPdfReport(reportData);
-                    document.GeneratePdf(sfd.FileName);
-
-                    MessageBox.Show($"Báo cáo đã được lưu thành công tại:\n{sfd.FileName}", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-                    // Tùy chọn: Tự động mở file PDF sau khi xuất
-                    var processStartInfo = new ProcessStartInfo(sfd.FileName) { UseShellExecute = true };
-                    Process.Start(processStartInfo);
                 }
-                catch (Exception ex) { MessageBox.Show("Lỗi khi tạo báo cáo PDF: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error); }
-                finally { this.Cursor = Cursors.Default; }
+
+                // 5. Tạo và xuất file PDF bằng QuestPDF
+                var document = new StatsQuestPdfReport(reportData);
+                
+                this.Cursor = Cursors.Default;
+                using var previewForm = new Presentation.Reports.PdfPreviewForm(document, $"LoveConnect_Stats_Report_{DateTime.Now:yyyyMMdd}.pdf");
+                previewForm.ShowDialog(this);
+            }
+            catch (Exception ex)
+            {
+                this.Cursor = Cursors.Default;
+                MessageBox.Show("Lỗi khi tạo báo cáo PDF: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }

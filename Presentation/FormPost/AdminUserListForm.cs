@@ -70,12 +70,12 @@ namespace Presentation.FormPost
             var line = new Panel { Dock = DockStyle.Top, Height = 1, BackColor = Color.LightGray };
             pnlFooter.Controls.Add(line);
 
-            var btnExport = new Button { Text = "Xuất CSV", Width = 120, Height = 35, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(10, 130, 60), ForeColor = Color.White };
+            var btnExport = new Button { Text = "Xem trước CSV", Width = 140, Height = 35, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(10, 130, 60), ForeColor = Color.White };
             btnExport.FlatAppearance.BorderSize = 0;
             btnExport.Click += (_, __) => ExportUsersToCsv();
             btnExport.Cursor = Cursors.Hand;
 
-            var btnExportPdf = new Button { Text = "Xuất PDF", Width = 120, Height = 35, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(180, 50, 50), ForeColor = Color.White };
+            var btnExportPdf = new Button { Text = "Xem trước PDF", Width = 140, Height = 35, FlatStyle = FlatStyle.Flat, BackColor = Color.FromArgb(180, 50, 50), ForeColor = Color.White };
             btnExportPdf.FlatAppearance.BorderSize = 0;
             btnExportPdf.Click += (_, __) => ExportUsersToPdf();
             btnExportPdf.Cursor = Cursors.Hand;
@@ -225,32 +225,24 @@ namespace Presentation.FormPost
                 return;
             }
 
-            using (var sfd = new SaveFileDialog())
+            try
             {
-                sfd.Filter = "CSV files (*.csv)|*.csv|All files (*.*)|*.*";
-                sfd.FileName = $"User_List_{DateTime.Now:yyyyMMdd_HHmm}.csv";
-                if (sfd.ShowDialog() == DialogResult.OK)
+                var sb = new StringBuilder();
+                sb.AppendLine("ID,Username,Email,Status,Role,Restrictions");
+
+                foreach (var user in _cachedUsers)
                 {
-                    try
-                    {
-                        var sb = new StringBuilder();
-                        sb.AppendLine("ID,Username,Email,Status,Role,Restrictions");
-
-                        foreach (var user in _cachedUsers)
-                        {
-                            var features = string.Join(";", user.GetRestrictionFeatures());
-                            var line = $"{user.Id},{EscapeCsvField(user.Username)},{EscapeCsvField(user.Email)},{user.Status},{user.Role},{EscapeCsvField(features)}";
-                            sb.AppendLine(line);
-                        }
-
-                        System.IO.File.WriteAllText(sfd.FileName, sb.ToString(), Encoding.UTF8);
-                        MessageBox.Show("Xuất dữ liệu thành công!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show("Lỗi khi xuất file: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
+                    var features = string.Join(";", user.GetRestrictionFeatures());
+                    var line = $"{user.Id},{EscapeCsvField(user.Username)},{EscapeCsvField(user.Email)},{user.Status},{user.Role},{EscapeCsvField(features)}";
+                    sb.AppendLine(line);
                 }
+
+                using var previewForm = new Presentation.Reports.TextPreviewForm(sb.ToString(), $"User_List_{DateTime.Now:yyyyMMdd_HHmm}.csv");
+                previewForm.ShowDialog(this);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi khi tạo dữ liệu: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -272,58 +264,76 @@ namespace Presentation.FormPost
                 return;
             }
 
-            using (var sfd = new SaveFileDialog())
+            try
             {
-                sfd.Filter = "PDF files (*.pdf)|*.pdf|All files (*.*)|*.*";
-                sfd.FileName = $"User_List_{DateTime.Now:yyyyMMdd_HHmm}.pdf";
-                if (sfd.ShowDialog() == DialogResult.OK)
+                var document = Document.Create(container =>
                 {
-                    try
+                    container.Page(page =>
                     {
-                        Document.Create(container =>
+                        page.Margin(30);
+                        
+                        page.Header().Row(row =>
                         {
-                            container.Page(page =>
+                            row.RelativeItem().Column(col =>
                             {
-                                page.Margin(30);
-                                page.Header().Text(text => text.Span("Danh sách Người dùng").Style(TextStyle.Default.FontSize(20).SemiBold().FontColor(Colors.Blue.Medium)));
-                                page.Content().PaddingVertical(10).Table(table =>
-                                {
-                                    table.ColumnsDefinition(columns =>
-                                    {
-                                        columns.ConstantColumn(80); // ID
-                                        columns.RelativeColumn();   // Username
-                                        columns.RelativeColumn();   // Email
-                                        columns.ConstantColumn(70); // Status
-                                        columns.ConstantColumn(70); // Role
-                                    });
-
-                                    table.Header(header =>
-                                    {
-                                        header.Cell().Background(Colors.Grey.Lighten3).Padding(5).Text("ID");
-                                        header.Cell().Background(Colors.Grey.Lighten3).Padding(5).Text("Username");
-                                        header.Cell().Background(Colors.Grey.Lighten3).Padding(5).Text("Email");
-                                        header.Cell().Background(Colors.Grey.Lighten3).Padding(5).Text("Status");
-                                        header.Cell().Background(Colors.Grey.Lighten3).Padding(5).Text("Role");
-                                    });
-
-                                    foreach (var user in _cachedUsers)
-                                    {
-                                        table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(user.Id.Length > 8 ? user.Id.Substring(0, 8) + "..." : user.Id);
-                                        table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(user.Username ?? "");
-                                        table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(user.Email ?? "");
-                                        table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(user.Status ?? "");
-                                        table.Cell().BorderBottom(1).BorderColor(Colors.Grey.Lighten2).Padding(5).Text(user.Role ?? "");
-                                    }
-                                });
-                                page.Footer().AlignCenter().Text(text => { text.CurrentPageNumber(); text.Span(" / "); text.TotalPages(); });
+                                col.Item().Text("DANH SÁCH NGƯỜI DÙNG").Style(TextStyle.Default.FontSize(20).SemiBold().FontColor(Colors.Blue.Darken2));
+                                col.Item().Text($"Ngày xuất: {DateTime.Now:dd/MM/yyyy HH:mm}").Style(TextStyle.Default.FontSize(10).FontColor(Colors.Grey.Darken1));
+                                col.Item().Text($"Tổng số lượng: {_cachedUsers.Count} người dùng").Style(TextStyle.Default.FontSize(10).FontColor(Colors.Grey.Darken1));
                             });
-                        }).GeneratePdf(sfd.FileName);
+                        });
 
-                        MessageBox.Show("Xuất PDF thành công!", "Thành công", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        Process.Start(new ProcessStartInfo(sfd.FileName) { UseShellExecute = true });
-                    }
-                    catch (Exception ex) { MessageBox.Show("Lỗi khi tạo báo cáo PDF: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error); }
-                }
+                        page.Content().PaddingVertical(15).Column(column =>
+                        {
+                            column.Spacing(15);
+                            foreach (var user in _cachedUsers)
+                            {
+                                var statusColor = user.Status == "active" ? Colors.Green.Medium : (user.Status == "inactive" ? Colors.Grey.Medium : (user.Status == "banned" ? Colors.Red.Medium : Colors.Orange.Medium));
+                                var roleColor = user.Role == "admin" ? Colors.Red.Medium : Colors.Blue.Medium;
+
+                                column.Item().Background(Colors.White)
+                                    .Border(1).BorderColor(Colors.Grey.Lighten2)
+                                    .Padding(12)
+                                    .Column(card =>
+                                    {
+                                        card.Item().Row(row =>
+                                        {
+                                            row.RelativeItem().Text($"Mã định danh (ID): {user.Id}").FontSize(9).FontColor(Colors.Grey.Medium);
+                                            row.ConstantItem(80).AlignRight().Text(user.Status?.ToUpper() ?? "UNKNOWN").FontSize(10).Bold().FontColor(statusColor);
+                                        });
+
+                                        card.Item().PaddingTop(5).LineHorizontal(1).LineColor(Colors.Grey.Lighten3);
+
+                                        card.Item().PaddingTop(8).Grid(grid =>
+                                        {
+                                            grid.Columns(12);
+                                            grid.Spacing(5);
+
+                                            grid.Item(3).Text("Tên người dùng:").SemiBold().FontSize(10);
+                                            grid.Item(9).Text(user.Username ?? "Không có").FontSize(10).Bold();
+
+                                            grid.Item(3).Text("Email:").SemiBold().FontSize(10);
+                                            grid.Item(9).Text(user.Email ?? "Không có").FontSize(10);
+
+                                            grid.Item(3).Text("Vai trò:").SemiBold().FontSize(10);
+                                            grid.Item(9).Text(user.Role?.ToUpper() ?? "USER").FontSize(10).Bold().FontColor(roleColor);
+
+                                            var features = string.Join(", ", user.GetRestrictionFeatures());
+                                            if (!string.IsNullOrWhiteSpace(features)) { grid.Item(3).Text("Hạn chế:").SemiBold().FontSize(10).FontColor(Colors.Red.Medium); grid.Item(9).Text(features).FontSize(10).Italic().FontColor(Colors.Red.Medium); }
+                                            else { grid.Item(3).Text("Hạn chế:").SemiBold().FontSize(10); grid.Item(9).Text("Không có").FontSize(10).Italic().FontColor(Colors.Grey.Medium); }
+                                        });
+                                    });
+                            }
+                        });
+                        page.Footer().AlignCenter().Text(text => { text.CurrentPageNumber(); text.Span(" / "); text.TotalPages(); });
+                    });
+                });
+
+                using var previewForm = new Presentation.Reports.PdfPreviewForm(document, $"User_List_{DateTime.Now:yyyyMMdd_HHmm}.pdf");
+                previewForm.ShowDialog(this);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi khi tạo báo cáo PDF: " + ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }
